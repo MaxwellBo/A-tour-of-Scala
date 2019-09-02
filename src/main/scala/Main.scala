@@ -1,4 +1,7 @@
+import java.awt.event.KeyListener
+
 object Main extends App {
+
   // Things may appear in a weird order. I'm doing that so that you know every
   // thing you need to know before you get to it, so you don't see something
   // weird and think 'what the hell is that'
@@ -10,6 +13,7 @@ object Main extends App {
   trait Animal {
     def sound: String
   }
+
   case class Dog() extends Animal {
     def sound: String = "woof"
   }
@@ -24,13 +28,15 @@ object Main extends App {
     println(animal.sound)
   }
 
-//  makeSound(Cat())
-//  makeSound(Dog())
+  //  makeSound(Cat())
+  //  makeSound(Dog())
 
   ///////////////////////////////////////////////////////////////////////////////
 
   object ThirdPartyLibrary {
+
     case class Rabbit()
+
   }
 
   import ThirdPartyLibrary.Rabbit
@@ -96,14 +102,14 @@ object Main extends App {
     serviceLayer()
   }
 
-//  controller()
+  //  controller()
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit val implicitBoolean:   Boolean = true
-  implicit val implicitInt:       Int     = 5
+  implicit val implicitBoolean: Boolean = true
+  implicit val implicitInt: Int = 5
 
-  def rawImplicitly[T](implicit x: T): T  = {
+  def rawImplicitly[T](implicit x: T): T = {
     x
   }
 
@@ -112,10 +118,10 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit val implicitListInt:       List[Int]   = List(5)
-  implicit val implicitOptionInt:     Option[Int] = Some(5)
+  implicit val implicitListInt: List[Int] = List(5)
+  implicit val implicitOptionInt: Option[Int] = Some(5)
 
-  def hktImplicitly[F[_]](implicit x: F[Int]): F[Int]  = {
+  def hktImplicitly[F[_]](implicit x: F[Int]): F[Int] = {
     x
   }
 
@@ -133,10 +139,10 @@ object Main extends App {
   // scala> :k Id
   // Id's kind is F[+A]
 
-  implicit val implicitListString: List[String]   = List("hello")
-  implicit val implicitListBoolean: List[Boolean]  = List(true)
+  implicit val implicitListString: List[String] = List("hello")
+  implicit val implicitListBoolean: List[Boolean] = List(true)
 
-  def hktAppImplicitly[F[_], A](implicit x: F[A]): F[A]  = {
+  def hktAppImplicitly[F[_], A](implicit x: F[A]): F[A] = {
     x
   }
 
@@ -150,9 +156,11 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   object IntSyntax {
+
     implicit final class IntExtensions(private val self: Int) extends AnyVal {
       def increment(): Int = self + 1
     }
+
   }
 
   import IntSyntax._
@@ -166,10 +174,13 @@ object Main extends App {
   }
 
   object SoundSyntax {
+
     implicit class CanMakeSoundIdExtensions[A](private val self: A) extends AnyVal {
       def sound_()(implicit instance: Sound[A]): String = {
-        instance.sound(self)}
+        instance.sound(self)
+      }
     }
+
   }
 
   object SoundInstances {
@@ -197,9 +208,9 @@ object Main extends App {
     println(a.sound_())
   }
 
-//  makeSoundImplicitParam(Dog())
-//  makeSoundImplicitParam(Cat())
-//  makeSoundImplicitParam(Rabbit()) // this now works!
+  //  makeSoundImplicitParam(Dog())
+  //  makeSoundImplicitParam(Cat())
+  //  makeSoundImplicitParam(Rabbit()) // this now works!
 
   def makeSoundGenericRequirement[A: Sound](a: A): Unit = {
     // val instance = implicitly[Sound[A]] // we can still recover the instance
@@ -241,11 +252,13 @@ object Main extends App {
   }
 
   object EncodeSyntax {
+
     implicit class EncodeIdExtensions[A](private val self: A) extends AnyVal {
       def encode()(implicit instance: Encode[A]): Json = {
         instance.encode(self)
       }
     }
+
   }
 
   object EncodeInstances {
@@ -341,13 +354,15 @@ object Main extends App {
     }
   }
 
-  val nana = FamilyMember(age=103)
+  val nana = FamilyMember(age = 103)
 
-  val grandma = FamilyMember(age=79, mother=Some(nana));     val grandad = FamilyMember(age=82)
+  val grandma = FamilyMember(age = 79, mother = Some(nana));
+  val grandad = FamilyMember(age = 82)
 
-  val mum = FamilyMember(age=55, mother=Some(grandma));     val dad = FamilyMember(age=56, father=Some(grandad))
+  val mum = FamilyMember(age = 55, mother = Some(grandma));
+  val dad = FamilyMember(age = 56, father = Some(grandad))
 
-  val son = FamilyMember(age=22, mother=Some(mum), father=Some(dad))
+  val son = FamilyMember(age = 22, mother = Some(mum), father = Some(dad))
 
   val family: List[FamilyMember] = List(grandma, grandad, mum, dad, son)
 
@@ -361,10 +376,10 @@ object Main extends App {
     mother.map(_.age)
   }
 
-//  println(getParentsAges(son)) // List(55, 56)
-//  println(getParentsAges(grandma)) // List()
-//  println(getMothersAge(son)) // Some(55)
-//  println(getMothersAge(grandma)) // None
+  //  println(getParentsAges(son)) // List(55, 56)
+  //  println(getParentsAges(grandma)) // List()
+  //  println(getMothersAge(son)) // Some(55)
+  //  println(getMothersAge(grandma)) // None
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -376,10 +391,10 @@ object Main extends App {
     member.map(_.age)
   }
 
-//  println(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
-//  println(getAgeFromList(grandma.parents)) // List()
-//  println(getAgeFromOption(son.mother)) // Some(55)
-//  println(getAgeFromOption(grandma.mother)) // None
+  //  println(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
+  //  println(getAgeFromList(grandma.parents)) // List()
+  //  println(getAgeFromOption(son.mother)) // Some(55)
+  //  println(getAgeFromOption(grandma.mother)) // None
 
   // How do we make something like this? 🤔
   // def getAge[F[_]: ???](f: F[FamilyMember]): F[Int] = {
@@ -395,11 +410,13 @@ object Main extends App {
   }
 
   object FunctorSyntax {
+
     implicit final class FunctorExtensions[F[_], A](private val self: F[A]) extends AnyVal {
       def map[B](f: A => B)(implicit instance: Functor[F]): F[B] = {
         instance.map(self)(f)
       }
     }
+
   }
 
   object FunctorInstances {
@@ -424,11 +441,11 @@ object Main extends App {
   import FunctorInstances._
   import FunctorSyntax._
 
-  def getAge[F[_]: Functor](f: F[FamilyMember]): F[Int] = {
+  def getAge[F[_] : Functor](f: F[FamilyMember]): F[Int] = {
     f.map(_.age)
   }
 
-  // println(getAge(family)) // List(79, 82, 55, 56, 22)
+  // println(getAge(family)) // List(103, 79, 82, 55, 56, 22)
   // println(getAge(son.mother)) // Some(55)
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -473,13 +490,16 @@ object Main extends App {
 
   trait Monad[F[_]] {
     def pure[A](a: A): F[A]
+
     def flatten[A](ffa: F[F[A]]): F[A]
+
     def flatMap[A, B](fa: F[A])(f: A => F[B])(implicit functor: Functor[F]): F[B] = {
       flatten(fa.map(f))
     }
   }
 
   object MonadSyntax {
+
     implicit class MonadIdExtensions[A](private val self: A) extends AnyVal {
       def pure[F[_]]()(implicit instance: Monad[F]): F[A] = {
         instance.pure(self)
@@ -497,11 +517,13 @@ object Main extends App {
         monadInstance.flatMap(self)(f)
       }
     }
+
   }
 
   object MonadInstances {
     implicit val listMonadInstance: Monad[List] = new Monad[List] {
       def pure[A](a: A): List[A] = List(a)
+
       def flatten[A](ffa: List[List[A]]): List[A] = ffa.flatten
     }
 
@@ -519,22 +541,24 @@ object Main extends App {
   // Monad usage
   ////////////////////////////////////////////////////////////////////////////////
 
-   def getGreatGrandMatriarchAgeM(member: FamilyMember): Option[Int] = {
-     member.mother
-       .flatMap(mother => mother.mother)
-         .flatMap(grandmother => grandmother.mother)
-            .map(greatGrandmother => greatGrandmother.age)
-     //           ^             ^ multiple successive Monad operations
-     //                           causes _eliminates nesting
-   }
-
-  def getAllAgesUpToGreatGrandparentsM(member: FamilyMember): List[Int] = {
-    member.parents.flatMap(_.parents.map(_.age))
+  def getGreatGrandMatriarchAgeM(member: FamilyMember): Option[Int] = {
+    member.mother
+      .flatMap(mother => mother.mother)
+      .flatMap(grandmother => grandmother.mother)
+      .map(greatGrandmother => greatGrandmother.age)
+    //           ^             ^ multiple successive Monad operations
+    //                           causes _eliminates nesting
   }
 
-//  println(getGrandMatriarchAgeM(son)) // Some(79)
-//  println(getAllAgesUpToGrandparents_(son)) // List(79, 82, 55, 56, 22)
+  def getAllAgesUpToGreatGrandparentsM(member: FamilyMember): List[Int] = {
+    member.parents
+      .flatMap(parent => parent.parents)
+      .flatMap(grandparent => grandparent.parents)
+      .map(greatGrandparent => greatGrandparent.age)
+  }
 
+  //  println(getGrandMatriarchAgeM(son)) // Some(79)
+  //  println(getAllAgesUpToGrandparents_(son)) // List(103, 79, 82, 55, 56, 22)
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -544,29 +568,24 @@ object Main extends App {
   import MonadSyntax._
 
 
-  def getAllAgesUpToGrandparentsM(member: FamilyMember): List[Int] = {
+  def getAllAgesUpToGreatGrandparentsC(member: FamilyMember): List[Int] = {
     for {
       parent <- member.parents
-      grandparents <- parent.parents
-
-    } yield
+      grandparent <- parent.parents
+      greatGrandparent <- grandparent.parents
+    } yield greatGrandparent.age
   }
 
-
-  def getGrandMatriarchAgeC(member: FamilyMember): Option[Int] = {
+  def getGreatGrandMatriarchAgeC(member: FamilyMember): Option[Int] = {
     for {
       mother <- member.mother
       grandmother <- mother.mother
-    } yield grandmother.age
+      greatGrandmother <- grandmother.mother
+    } yield greatGrandmother.age
   }
 
-//   println(getGrandMatriarchAgeC(son)) // Some(79)
-
-  def getAllAgesUpToGrandparentsM(member: FamilyMember): List[Int] = {
-    for {
-
-    }
-  }
+  //   println(getGreatGrandMatriarchAgeC(son)) // Some(103)
+  //   println(getGreatGrandMatriarchAgeC(son)) // List(103, 79, 82, 55, 56, 22)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -574,27 +593,25 @@ object Main extends App {
 
   object IO {
     def effect[A](eff: => A) = new IO(() => eff)
-  }
 
-  object MoreFunctorInstances {
-    implicit val ioFunctorInstance: Functor[IO] = new Functor[IO] {
-      def map[A, B](fa: IO[A])(f: A => B): IO[B] = IO.effect(f(fa.unsafeInterpret()))
+    object Instances {
+      implicit val ioFunctorInstance: Functor[IO] = new Functor[IO] {
+        def map[A, B](fa: IO[A])(f: A => B): IO[B] = IO.effect(f(fa.unsafeInterpret()))
+      }
+
+      implicit val ioMonadInstance: Monad[IO] = new Monad[IO] {
+        def pure[A](a: A): IO[A] = IO.effect(a)
+
+        def flatten[A](ffa: IO[IO[A]]): IO[A] =
+          IO.effect(ffa.unsafeInterpret().unsafeInterpret())
+      }
     }
-  }
 
-  object MoreMonadInstances {
-    implicit val ioMonadInstance: Monad[IO] = new Monad[IO] {
-      def pure[A](a: A): IO[A] = IO.effect(a)
-
-      def flatten[A](ffa: IO[IO[A]]): IO[A] =
-        IO.effect(ffa.unsafeInterpret().unsafeInterpret())
-    }
   }
 
   import FunctorSyntax._
   import MonadSyntax._
-  import MoreFunctorInstances._
-  import MoreMonadInstances._
+  import IO.Instances._
 
   def putStrLn(line: String): IO[Unit] =
     IO.effect(println(line))
@@ -603,113 +620,156 @@ object Main extends App {
     IO.effect(scala.io.StdIn.readLine())
 
   val echo: IO[Unit] = for {
-    _        <- putStrLn("Please enter something to be echoed:")
-    str      <- getStrLn
-    _        <- putStrLn("Echoing: " + str)
+    _ <- putStrLn("Please enter something to be echoed:")
+    str <- getStrLn
+    _ <- putStrLn("Echoing: " + str)
   } yield ()
 
   // echo.unsafeInterpret()
 
-  // is roughly equivalent to
-
-  // putStrLn("Please enter something to be echoed:").flatMap(_ =>
-  //   getStrLn.flatMap(str =>
-  //     putStrLn("Echoing: " + str)
+  // is equivalent equivalent to
+  //   putStrLn("Please enter something to be echoed:")
+  //     .flatMap(_ => getStrLn
+  //       .flatMap(str =>
+  //         putStrLn("Echoing: " + str)
+  //     )
   //   )
-  // )
-
-  def poll(backoff: Int): IO[Int] = {
-    // wait for backoff seconds before polling again
-    // poll some endpoint
-    // get the new endpoint provided backoff value
-    IO.effect(backoff + 1)
-  }
-
-  def workingPoll3Times(): IO[Int] = {
-    poll(backoff=1)
-      .flatMap(poll)
-      .flatMap(poll)
-  }
-
-  def workingPoll3TimesWithForNation(): IO[Int] = for {
-    newBackoff <- poll(backoff=1)
-    newBackoff2 <- poll(newBackoff)
-    finalBackoff <- poll(newBackoff2)
-  } yield finalBackoff
-
-  // println(workingPoll3Times().unsafeInterpret())
-  // println(workingPoll3TimesWithForNation().unsafeInterpret())
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  val showInt: Int => String = _.toString
+  val add9Compose = add3.andThen(add3).andThen(add3)
 
-  val unshowInt: String => Int = _.toInt
-
-  object EvenMoreFunctorInstances {
-    implicit def function1FunctorInstance[R <: AnyVal]: Functor[R => ?] = new Functor[R => ?] {
+  object Function1FunctorInstances {
+    implicit def function1FunctorInstance[R]: Functor[R => ?] = new Functor[R => ?] {
       def map[A, B](fa: R => A)(f: A => B): R => B = fa.andThen(f)
     }
   }
 
   import FunctorSyntax._
-  import EvenMoreFunctorInstances._
+  import Function1FunctorInstances._
 
-  val roundtrip: Int => Int = showInt.map(unshowInt)
+  val add9: Int => Int = add3.map(add3).map(add3)
 
-//   println(roundtrip(10))
+  // println(add9(10)) // 19
 
-  object EvenMoreMonadInstances {
+  ///////////////////////////////////////////////////////////////////////////////
+
+  object Function1MonadInstances {
     implicit def function1MonadInstance[R]: Monad[R => ?] = new Monad[R => ?] {
-
       def pure[A](a: A): R => A =
         (r: R) => a
 
-      def flatten[A](ffa: R => (R => A)): R => A =
-      { r: R =>
-        val fa: (R) => A = ffa(r)
+      def flatten[A](ffa: R => (R => A)): R => A = { r: R =>
+        val fa: R => A = ffa(r)
         val a: A = fa(r)
         a
+      }
+
+      //      def flatMap[A, B](ffa: R => A)(f: A => (R => B)): R => B =
+      //      { r: R =>
+      //        val a: R => A = ffa(r)
+      //        val fb: R => B = f(a)
+      //        fb(r)
+      //      }
+    }
+  }
+
+  import Function1MonadInstances._
+
+  val doTransforms: Int => (Int, String, Boolean) = for {
+    addOne <- (x: Int) => x + 1
+    toString <- (x: Int) => x.toString
+    isEven <- (x: Int) => x % 2 == 0
+  } yield (addOne, toString, isEven)
+
+  //  val doTransformsDesugared: Int => (Int, String, List[Int]) =
+  //    ((x: Int)   => x + 1)
+  //      .flatMap(addOne => ((x: Int) => x.toString)
+  //        .flatMap(toString => ((x: Int)   => x % 2 == 0)
+  //          .map(isEven => (addOne, toString, isEven))))
+  //
+  //   println(doTransforms(0)) // (1, "0", true)
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // normally we'd just need Monad but because we played silly buggers with `flatMap` we need this annotation
+  final case class Kleisli[F[_] : Functor : Monad, A, B](run: A => F[B]) {
+    def andThen[C](k: Kleisli[F, B, C]): Kleisli[F, A, C] =
+      Kleisli(a => run(a).flatMap(k.run))
+  }
+
+  object Kleisli {
+
+    object Instances {
+      implicit def kleisliFunctorInstance[F[_] : Functor : Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
+        def map[A, B](fa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
+          Kleisli(r => fa.run(r).map(f)) // please im begging you don't make me explain this
+        }
+      }
+
+      implicit def kleisliMonadInstance[F[_] : Functor : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
+        def pure[A](a: A): Kleisli[F, R, A] =
+          Kleisli(r => a.pure[F])
+
+        def flatten[A](ffa: Kleisli[F, R, Kleisli[F, R, A]]): Kleisli[F, R, A] =
+          Kleisli(r => ffa.run(r).flatMap(_.run(r))) // this is effectively the only implementation
       }
     }
   }
 
-  import EvenMoreMonadInstances._
+  import Kleisli.Instances._
 
-   val addDigits: Int => (Int, Int, Int) = for {
-     addOne <- (x: Int) => x + 1
-     addTwo <- (x: Int) => x + 2
-     addThree <- (x: Int) => x + 3
-   } yield (addOne, addTwo, addThree)
+  def getMother: Kleisli[Option, FamilyMember, FamilyMember] = {
+    Kleisli(familyMember => familyMember.mother)
+  }
 
-//   println(addDigits(0)) // (1, 2, 3)
+  val getGreatGrandmotherAgeK: FamilyMember => Option[Int] =
+    getMother.andThen(getMother).andThen(getMother).map(_.age).run
+
+//  println(getGreatGrandmotherAgeK(son)) // Some(103)
 
   ///////////////////////////////////////////////////////////////////////////////
-  // OUR NORTHSTAR
 
-  case class HttpRequest(method: String, body: Option[String], parameters: Map[String, String])
+  case class HttpRequest(method: String, parameters: Map[String, String], body: Option[String])
+
   case class HttpResponse(body: String)
+
   case class JwtToken()
 
-  // def POST(request: HttpRequest): Option[Unit]
-  // def extractBody(request: HttpRequest): Option[String]
-  // def extractHeader(name: String)(request: HttpRequest): Option[String]
+  def POST(request: HttpRequest): Option[Unit] = {
+    if (request.method == "POST")
+      Some(())
+    else
+      None
+  }
 
-  // def parseJWT(token: String): Option[JwtToken]
+  def extractBody(request: HttpRequest): Option[String] =
+    request.body
 
-  // def echoController: HttpRequest => Option[HttpResponse] = for {
-  //   _ <- POST
-  //   body <- extractBody
-  //   header <- extractHeader("Authorisation").map(_.flatMap(parseJWT))
-  // } yield HttpResponse(body)
+  def extractHeader(name: String)(request: HttpRequest): Option[String] =
+    request.parameters.get(name)
 
+  def echoController: Kleisli[Option, HttpRequest, HttpResponse] = for {
+    _ <- Kleisli(POST)
+    _ <- Kleisli(extractHeader("Authorisation"))
+    body <- Kleisli(extractBody)
+  } yield HttpResponse(body)
 
-  // println(handler())
+  println(echoController.run(
+    HttpRequest(
+      "POST",
+      Map("Authorisation" -> "Yes"),
+      Some("Hello world")
+  ))) // Some(HttpResponse("Hello world"))
 
-  //final case class Kleisli[F[_]: Monad, A, B](run: A => F[B]) {
-  //  def compose[Z](k: Kleisli[F, Z, A]): Kleisli[F, Z, B] =
-  //    Kleisli[F, Z, B](z => k.run(z).flatMap(run))
-  //}
+  println(echoController.run(
+    HttpRequest(
+      "GET",
+      Map("Authorisation" -> "Yes"),
+      Some("Hello world")
+  ))) // None
+
+  type ReaderT[F, A, B] = Kleisli[F, A, B]
 
   ///////////////////////////////////////////////////////////////////////////////
   // "Mapped" types
@@ -721,6 +781,7 @@ object Main extends App {
 
   sealed trait CustomerShape[F[_]] {
     def name: F[String]
+
     def description: F[String]
   }
 
