@@ -1109,7 +1109,7 @@ object Main extends App {
     Free.suspend(SpecifyTargetM)
 
   def findTargetM(name: String): Free[OperationM, (Int, Int)] =
-    Free.suspend(FindTargetM(name: String))
+    Free.suspend(FindTargetM(name))
 
   def loadTargetM(location: (Int, Int)): Free[OperationM, Unit] =
     Free.suspend(LoadTargetM(location))
