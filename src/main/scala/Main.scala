@@ -1,5 +1,3 @@
-import java.awt.event.KeyListener
-
 object Main extends App {
 
   // Things may appear in a weird order. I'm doing that so that you know every
