@@ -983,7 +983,7 @@ object Main extends App {
       xs.foldRight(identity)(_ <> _)
     }
 
-    def mconcatMap[M: Monoid, A](xs: List[A])(f: A => M): M = {
+    def mconcatMap[M: Monoid, G](xs: List[G])(f: G => M): M = {
       mconcat(xs.map(f))
     }
   }
@@ -996,7 +996,6 @@ object Main extends App {
 
   case object SpecifyTarget extends Operation
   case class FindTarget(name: String) extends Operation
-  case class LoadTarget(location: (Int, Int)) extends Operation
 
   case class CheckTarget(location: (Int, Int)) extends Operation
   case object Fire extends Operation
@@ -1006,9 +1005,6 @@ object Main extends App {
 
   def findTarget(name: String): List[Operation] =
     List(FindTarget(name))
-
-  def loadTarget(location: (Int, Int)): List[Operation] =
-    List(LoadTarget(location))
 
   def checkTarget(location: (Int, Int)): List[Operation] =
     List(CheckTarget(location))
@@ -1021,7 +1017,7 @@ object Main extends App {
   import Monoid.Instances._
 
   def prepare(): List[Operation] =
-    specifyTarget() <> findTarget("Max") <> loadTarget((82, 43))
+    specifyTarget() <> findTarget("Max")
 
   def launch(): List[Operation] =
     checkTarget((82, 43)) <> fire()
@@ -1033,7 +1029,6 @@ object Main extends App {
     op match {
       case SpecifyTarget => println("Accepting target specification")
       case FindTarget(name) => println(s"Locating target called $name")
-      case LoadTarget(location) => println(s"Locking missile onto target of coordinate $location")
       case CheckTarget(location) => println(s"Checking for civilians at coordinate $location")
       case Fire => println("Fox-3")
     }
@@ -1059,6 +1054,9 @@ object Main extends App {
     def apply[A](fa: F[A]): G[A]
   }
 
+  // Recall:
+  // def mconcatMap[M: Monoid, G](xs: List[G])
+  //                            (f: G => M): M = {
   sealed trait Free[G[_], A] { self: Free[G, A] =>
     def foldMap[F[_]: Monad](nt: G ~> F): F[A] = {
       self match {
@@ -1130,11 +1128,11 @@ object Main extends App {
 
 
   import Free.Instances._
+  import Main.Monoid.mconcat
 
   def prepareM(): Free[OperationM, (Int, Int)] = for {
     name <- specifyTargetM()
     coords <- findTargetM(name)
-    _ <- loadTargetM(coords)
   } yield coords
 
   def launchM(location: (Int, Int)): Free[OperationM, Unit] = {
@@ -1162,8 +1160,6 @@ object Main extends App {
             (82, 43).pure[Sync]
           else
             (20, 36).pure[Sync]
-        case LoadTargetM(location) =>
-          putStrLn(s"Locking missile onto target of coordinate $location")
         case CheckTargetM(location) =>
           ((82, 43) != location).pure[Sync]
         case FireM =>
@@ -1174,39 +1170,33 @@ object Main extends App {
   }
 
   val syncMission: Sync[Unit] = missionM.foldMap(prodInterpreterM)
+//  syncMission.unsafeInterpret()
+//  syncMission.unsafeInterpret()
 
-  syncMission.unsafeInterpret()
-  syncMission.unsafeInterpret()
+  type TestResult[A] = State[Option[FamilyMember], A]
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // "Mapped" types
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // https://www.typescriptlang.org/docs/handbook/advanced-types.html#mapped-types
-  type Partial[T[_[_]]] = T[Option]
-  type All[T[_[_]]] = T[Id]
-
-  sealed trait CustomerShape[F[_]] {
-    def name: F[String]
-
-    def description: F[String]
+  def testInterpreterM(checkSucceeds: Boolean): OperationM ~> TestResult = new (OperationM ~> TestResult) {
+    override def apply[A](fa: OperationM[A]): TestResult[A] =
+      fa match {
+        case SpecifyTargetM => "Max".pure[TestResult]
+        case FindTargetM(name) => (82, 43).pure[TestResult]
+        case CheckTargetM(_) => checkSucceeds.pure[TestResult]
+        case FireM => State.put(None)
+        case AbortM => ().pure[TestResult]
+      }
   }
 
-  final case class InsertCustomer(
-    name: String,
-    description: String
-  ) extends All[CustomerShape]
+  val stateMissionExpectDead: State[Option[FamilyMember], Unit] =
+    missionM.foldMap(testInterpreterM(checkSucceeds = true))
 
-  final case class UpdateCustomer(
-    name: Option[String],
-    description: Option[String]
-  ) extends Partial[CustomerShape]
+//  println(stateMissionExpectDead.run(Some(nana))) // (None, ())
+
+  val stateMissionExpectLiving: State[Option[FamilyMember], Unit] =
+    missionM.foldMap(testInterpreterM(checkSucceeds = false))
+
+//  println(stateMissionExpectLiving.run(Some(nana))) // (Some(...), ())
 
   ///////////////////////////////////////////////////////////////////////////////
-
-
-  //  def concatMap[A, M: Monoid](xs: List[A], interp: A => M): M
-  //  def concatFlatMap[A, G, M: Monad](xs: Free[F, A], interp: G[A] ~> M[A]): M[A]
 
   trait Applicative[F[_]] {
 //    implicit def functorInstance: Functor[F]
