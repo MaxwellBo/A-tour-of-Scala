@@ -1054,9 +1054,6 @@ object Main extends App {
     def apply[A](fa: F[A]): G[A]
   }
 
-  // Recall:
-  // def mconcatMap[M: Monoid, G](xs: List[G])
-  //                            (f: G => M): M = {
   sealed trait Free[G[_], A] { self: Free[G, A] =>
     def foldMap[F[_]: Monad](nt: G ~> F): F[A] = {
       self match {
@@ -1195,6 +1192,14 @@ object Main extends App {
     missionM.foldMap(testInterpreterM(checkSucceeds = false))
 
 //  println(stateMissionExpectLiving.run(Some(nana))) // (Some(...), ())
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Why is it called the Free Monad
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // def mconcatMap[M: Monoid, G](xs: List[G])(f: G => M): M = {
+  // def foldMap[F[_]: Monad, G, A](fa: Free[G, A])(nt: G ~> F): F[A] = {
 
   ///////////////////////////////////////////////////////////////////////////////
 
