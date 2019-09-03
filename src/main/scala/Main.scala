@@ -719,14 +719,18 @@ object Main extends App {
 
   import Kleisli.Instances._
 
-  def getMother: Kleisli[Option, FamilyMember, FamilyMember] = {
-    Kleisli(familyMember => familyMember.mother)
+  def getMother(familyMember: FamilyMember): Option[FamilyMember] = {
+    familyMember.mother
   }
 
-  val getGreatGrandmotherAgeK: FamilyMember => Option[Int] =
-    getMother.andThen(getMother).andThen(getMother).map(_.age).run
+  def getMotherK: Kleisli[Option, FamilyMember, FamilyMember] = {
+    Kleisli(getMother)
+  }
 
-//  println(getGreatGrandmotherAgeK(son)) // Some(103)
+  val getGreatGrandmotherAge: FamilyMember => Option[Int] =
+    getMotherK.andThen(getMotherK).andThen(getMotherK).map(_.age).run
+
+//  println(getGreatGrandmotherAge(son)) // Some(103)
 
   ///////////////////////////////////////////////////////////////////////////////
 
