@@ -355,11 +355,12 @@ object Main extends App {
   }
 
   val nana = FamilyMember(age = 103)
+  val greatGrandad = FamilyMember(age = 104)
 
-  val grandma = FamilyMember(age = 79, mother = Some(nana));
-  val grandad = FamilyMember(age = 82)
+  val grandma = FamilyMember(age = 79, mother = Some(nana))
+  val grandad = FamilyMember(age = 82, father = Some(greatGrandad))
 
-  val mum = FamilyMember(age = 55, mother = Some(grandma));
+  val mum = FamilyMember(age = 55, mother = Some(grandma))
   val dad = FamilyMember(age = 56, father = Some(grandad))
 
   val son = FamilyMember(age = 22, mother = Some(mum), father = Some(dad))
@@ -462,12 +463,28 @@ object Main extends App {
           .map(greatGrandmother => greatGrandmother.age)))
   }
 
-  def getAllAgesUpToGreatGrandparents(member: FamilyMember): List[List[List[Int]]] = {
+  println(getGreatGrandMatriarchAge(son)) // Some(Some(Some(103)))
+  println(getGreatGrandMatriarchAge(mum)) // Some(Some(None))
+
+  def getAllGreatGrandparentAges(member: FamilyMember): List[List[List[Int]]] = {
     member.parents
       .map(parent => parent.parents
         .map(grandparent => grandparent.parents
           .map(greatGrandparent => greatGrandparent.age)))
   }
+
+  println(getAllGreatGrandparentAges(son)) // List(List(List(103)), List(List(104)))
+
+  def sumAgeOfPersonAndParents(member: FamilyMember): Option[Option[Int]] = {
+    member.mother.map(mother =>
+      member.father.map(father =>
+        member.age + mother.age + father.age
+      )
+    )
+  }
+
+//  println(sumAgeOfPersonAndParents(son)) // Some(Some(133))
+//  println(sumAgeOfPersonAndParents(mum)) // Some(None)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -489,13 +506,16 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   trait Monad[F[_]] {
+    implicit def functorInstance: Functor[F]
+
     def pure[A](a: A): F[A]
 
-    def flatten[A](ffa: F[F[A]]): F[A]
+    // you only have to implement one or the other, as each can be derived from each others impl
+    def flatten[A](ffa: F[F[A]]): F[A] =
+      flatMap(ffa)(x => x)
 
-    def flatMap[A, B](fa: F[A])(f: A => F[B])(implicit functor: Functor[F]): F[B] = {
+    def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B] =
       flatten(fa.map(f))
-    }
   }
 
   object MonadSyntax {
@@ -513,24 +533,28 @@ object Main extends App {
     }
 
     implicit final class MonadExtensions[F[_], A](private val self: F[A]) extends AnyVal {
-      def flatMap[B](f: A => F[B])(implicit monadInstance: Monad[F], functorInstance: Functor[F]): F[B] = {
+      def flatMap[B](f: A => F[B])(implicit monadInstance: Monad[F]): F[B] = {
         monadInstance.flatMap(self)(f)
       }
     }
-
   }
 
   object MonadInstances {
     implicit val listMonadInstance: Monad[List] = new Monad[List] {
+      override implicit def functorInstance: Functor[List] = listFunctorInstance
+
       def pure[A](a: A): List[A] = List(a)
 
-      def flatten[A](ffa: List[List[A]]): List[A] = ffa.flatten
+      override def flatten[A](ffa: List[List[A]]): List[A] =
+        ffa.flatten
     }
 
     implicit val optionMonadInstance: Monad[Option] = new Monad[Option] {
+      override implicit def functorInstance: Functor[Option] = optionFunctorInstance
+
       def pure[A](a: A): Option[A] = Some(a)
 
-      def flatten[A](ffa: Option[Option[A]]): Option[A] = ffa match {
+      override def flatten[A](ffa: Option[Option[A]]): Option[A] = ffa match {
         case Some(Some(a)) => Some(a)
         case _ => None
       }
@@ -550,15 +574,27 @@ object Main extends App {
     //                           causes _eliminates nesting
   }
 
-  def getAllAgesUpToGreatGrandparentsM(member: FamilyMember): List[Int] = {
+  //  println(getGreatGrandMatriarchAgeM(son)) // Some(79)
+  //  println(getGreatGrandMatriarchAgeM(mum) // None
+
+  def getAllGreatGrandparentAgesM(member: FamilyMember): List[Int] = {
     member.parents
       .flatMap(parent => parent.parents)
       .flatMap(grandparent => grandparent.parents)
       .map(greatGrandparent => greatGrandparent.age)
   }
 
-  //  println(getGrandMatriarchAgeM(son)) // Some(79)
-  //  println(getAllAgesUpToGrandparents_(son)) // List(103, 79, 82, 55, 56, 22)
+//  println(getAllGreatGrandparentAgesM(son)) // List(103, 104)
+
+  def sumAgeOfPersonAndParentsM(member: FamilyMember): Option[Int] = {
+    member.mother.flatMap(mother =>
+      member.father.map(father =>
+        member.age + mother.age + father.age
+      )
+    )
+  }
+  //  println(sumAgeOfPersonAndParents(son)) // Some(133)
+  //  println(sumAgeOfPersonAndParents(mum)) // None
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -568,7 +604,7 @@ object Main extends App {
   import MonadSyntax._
 
 
-  def getAllAgesUpToGreatGrandparentsC(member: FamilyMember): List[Int] = {
+  def getAllGreatGrandparentAgesC(member: FamilyMember): List[Int] = {
     for {
       parent <- member.parents
       grandparent <- parent.parents
@@ -584,8 +620,12 @@ object Main extends App {
     } yield greatGrandmother.age
   }
 
-  //   println(getGreatGrandMatriarchAgeC(son)) // Some(103)
-  //   println(getGreatGrandMatriarchAgeC(son)) // List(103, 79, 82, 55, 56, 22)
+  def sumAgeOfPersonAndParentsC(member: FamilyMember): Option[Int] = {
+    for {
+      mother <- member.mother
+      father <- member.father
+    } yield member.age + mother.age + father.age
+  }
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -600,9 +640,11 @@ object Main extends App {
       }
 
       implicit val ioMonadInstance: Monad[IO] = new Monad[IO] {
+        override implicit def functorInstance: Functor[IO] = ioFunctorInstance
+
         def pure[A](a: A): IO[A] = IO.effect(a)
 
-        def flatten[A](ffa: IO[IO[A]]): IO[A] =
+        override def flatten[A](ffa: IO[IO[A]]): IO[A] =
           IO.effect(ffa.unsafeInterpret().unsafeInterpret())
       }
     }
@@ -637,7 +679,12 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  val add9Compose = add3.andThen(add3).andThen(add3)
+  val showInt: Int => String = _.toString
+  val isBigString: String => Boolean = _.length > 5
+
+  val isBigNumber: Int => Boolean = showInt.andThen(isBigString)
+
+  ///////////////////////////////////////////////////////////////////////////////
 
   object Function1FunctorInstances {
     implicit def function1FunctorInstance[R]: Functor[R => ?] = new Functor[R => ?] {
@@ -656,21 +703,17 @@ object Main extends App {
 
   object Function1MonadInstances {
     implicit def function1MonadInstance[R]: Monad[R => ?] = new Monad[R => ?] {
+      override implicit def functorInstance: Functor[R => ?] = function1FunctorInstance
+
       def pure[A](a: A): R => A =
         (r: R) => a
 
-      def flatten[A](ffa: R => (R => A)): R => A = { r: R =>
-        val fa: R => A = ffa(r)
-        val a: A = fa(r)
-        a
+      override def flatMap[A, B](ffa: R => A)(f: A => (R => B)): R => B =
+      { r: R =>
+        val a: A = ffa(r)
+        val fb: R => B = f(a)
+        fb(r)
       }
-
-      //      def flatMap[A, B](ffa: R => A)(f: A => (R => B)): R => B =
-      //      { r: R =>
-      //        val a: R => A = ffa(r)
-      //        val fb: R => B = f(a)
-      //        fb(r)
-      //      }
     }
   }
 
@@ -692,8 +735,7 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  // normally we'd just need Monad but because we played silly buggers with `flatMap` we need this annotation
-  final case class Kleisli[F[_] : Functor : Monad, A, B](run: A => F[B]) {
+  final case class Kleisli[F[_]: Monad, A, B](run: A => F[B]) {
     def andThen[C](k: Kleisli[F, B, C]): Kleisli[F, A, C] =
       Kleisli(a => run(a).flatMap(k.run))
   }
@@ -701,18 +743,22 @@ object Main extends App {
   object Kleisli {
 
     object Instances {
-      implicit def kleisliFunctorInstance[F[_] : Functor : Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
+      implicit def kleisliFunctorInstance[F[_]: Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
         def map[A, B](fa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
-          Kleisli(r => fa.run(r).map(f)) // please im begging you don't make me explain this
+          implicit val functorInstance: Functor[F] = implicitly[Monad[F]].functorInstance
+
+          Kleisli(r => fa.run(r).map(f)) // demo types
         }
       }
 
-      implicit def kleisliMonadInstance[F[_] : Functor : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
+      implicit def kleisliMonadInstance[F[_]: Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
+        override implicit def functorInstance: Functor[Kleisli[F, R, ?]] = kleisliFunctorInstance
+
         def pure[A](a: A): Kleisli[F, R, A] =
           Kleisli(r => a.pure[F])
 
-        def flatten[A](ffa: Kleisli[F, R, Kleisli[F, R, A]]): Kleisli[F, R, A] =
-          Kleisli(r => ffa.run(r).flatMap(_.run(r))) // this is effectively the only implementation
+        override def flatten[A](ffa: Kleisli[F, R, Kleisli[F, R, A]]): Kleisli[F, R, A] =
+          Kleisli(r => ffa.run(r).flatMap(_.run(r))) // demo with rewrite
       }
     }
   }
@@ -727,10 +773,10 @@ object Main extends App {
     Kleisli(getMother)
   }
 
-  val getGreatGrandmotherAge: FamilyMember => Option[Int] =
+  val getGreatGrandmotherAgeR: FamilyMember => Option[Int] =
     getMotherK.andThen(getMotherK).andThen(getMotherK).map(_.age).run
 
-//  println(getGreatGrandmotherAge(son)) // Some(103)
+//  println(getGreatGrandmotherAgeR(son)) // Some(103)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -759,21 +805,55 @@ object Main extends App {
     body <- Kleisli(extractBody)
   } yield HttpResponse(body)
 
-  println(echoController.run(
-    HttpRequest(
-      "POST",
-      Map("Authorisation" -> "Yes"),
-      Some("Hello world")
-  ))) // Some(HttpResponse("Hello world"))
+//  println(echoController.run(
+//    HttpRequest(
+//      "POST",
+//      Map("Authorisation" -> "Yes"),
+//      Some("Hello world")
+//  ))) // Some(HttpResponse("Hello world"))
 
-  println(echoController.run(
-    HttpRequest(
-      "GET",
-      Map("Authorisation" -> "Yes"),
-      Some("Hello world")
-  ))) // None
+//  println(echoController.run(
+//    HttpRequest(
+//      "GET",
+//      Map("Authorisation" -> "Yes"),
+//      Some("Hello world")
+//  ))) // None
 
-  type ReaderT[F, A, B] = Kleisli[F, A, B]
+  type ReaderT[F[_], A, B] = Kleisli[F, A, B]
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Semigroups and Monoids
+  ///////////////////////////////////////////////////////////////////////////////
+//  https://en.wikipedia.org/wiki/Algebraic_structure
+
+  trait Semigroup[A] {
+    def <>(here: A)(there: A): A
+  }
+
+  trait Monoid[A] {
+    implicit def semigroupInstance: Semigroup[A]
+    def identity: A
+  }
+
+  object SemigroupSyntax {
+    implicit class SemigroupIdSyntax[M](here: M) {
+      def <>(there: M)(implicit instance: Semigroup[M]): M = {
+        instance.<>(here)(there)
+      }
+    }
+  }
+
+  object MonoidSyntax {
+    def identity[M](implicit instance: Monoid[M]): M = instance.identity
+  }
+
+  import SemigroupSyntax._
+  import MonoidSyntax._
+
+  def concat[M: Monoid](xs: List[M]): M = {
+    implicit val semigroupInstance: Semigroup[M] = implicitly[Monoid[M]].semigroupInstance
+    xs.foldRight(identity)(_ <> _)
+  }
 
   ///////////////////////////////////////////////////////////////////////////////
   // "Mapped" types
@@ -800,4 +880,9 @@ object Main extends App {
   ) extends Partial[CustomerShape]
 
   ///////////////////////////////////////////////////////////////////////////////
+
+
+
+//  def concatMap[A, M: Monoid](xs: List[A], interp: A => M): M
+//  def concatFlatMap[A, G, M: Monad](xs: Free[F, A], interp: G[A] ~> M[A]): M[A]
 }
