@@ -473,7 +473,7 @@ object Main extends App {
           .map(greatGrandparent => greatGrandparent.age)))
   }
 
-  println(getAllGreatGrandparentAges(son)) // List(List(List(103)), List(List(104)))
+//  println(getAllGreatGrandparentAges(son)) // List(List(List(103)), List(List(104)))
 
   def sumAgeOfPersonAndParents(member: FamilyMember): Option[Option[Int]] = {
     member.mother.map(mother =>
@@ -697,7 +697,7 @@ object Main extends App {
 
   val isBigNumber: Int => Boolean = showInt.andThen(isBigString)
 
-  println(isBigNumber(10000)) // true
+//  println(isBigNumber(10000)) // true
 
   ///////////////////////////////////////////////////////////////////////////////
   // The reader Functor
@@ -721,7 +721,7 @@ object Main extends App {
 
   val isBigNumberM: Int => Boolean = showInt.map(isBigString)
 
-  println(isBigNumberM(10000)) // true
+//  println(isBigNumberM(10000)) // true
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -764,28 +764,55 @@ object Main extends App {
   final case class State[S, A](run: S => (S, A))
 
   object State {
-    implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new Functor[State[S, ?]] {
-      def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
-        State(s => {
-          val (sp, a) = fa.run(s)
-          (sp, f(a))
-        })
+    object Instances {
+      implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new Functor[State[S, ?]] {
+        def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
+          State(s => {
+            val (sp, a) = fa.run(s)
+            (sp, f(a))
+          })
+      }
+
+      implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
+        def functorInstance: Functor[State[S, ?]] = stateFunctorInstance
+
+        def pure[A](a: A): State[S, A] =
+          State(s => (s, a))
+
+        override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] =
+          State(s => {
+            val (sp, a) = fa.run(s)
+            val fb: State[S, B] = f(a)
+            fb.run(sp)
+          })
+      }
     }
 
-    implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
-      def functorInstance: Functor[State[S, ?]] = stateFunctorInstance
+    def get[S](): State[S, S] =
+      State(s => (s, s))
 
-      def pure[A](a: A): State[S, A] =
-        State(s => (s, a))
+    def put[S](n: S): State[S, Unit] =
+      State(s => (n, ()))
 
-      override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] =
-        State(s => {
-          val (sp, a) = fa.run(s)
-          val fb: State[S, B] = f(a)
-          fb.run(sp)
-        })
-    }
+    def modify[S](f: S => S): State[S, Unit] =
+      State(s => (f(s), ()))
   }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // State - usage
+  ///////////////////////////////////////////////////////////////////////////////
+
+  import State.Instances._
+
+  val computation: State[Int, String] = for {
+    _ <- State.modify[Int](_ + 1)
+    _ <- State.put[Int](10)
+    _ <- State.modify[Int](_ - 2)
+    last <- State.get[Int]()
+  } yield s"The final value is $last"
+
+  // where 0 is the initial value
+  println(computation.run(0)) // (8, The final value is 8)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Kleisli - I'm really sorry
