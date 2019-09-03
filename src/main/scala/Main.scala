@@ -708,10 +708,10 @@ object Main extends App {
       def map[A, B](fa: R => A)(f: A => B): R => B = fa.andThen(f)
 //       def map[A, B](fa: R => A)(f: A => B): R => B =
 //        { r: R =>
-//          val a: A = fa(r)
-//          val b: B = f(a)
+//          val a: A = fa(r) // unwrap
+//          val b: B = f(a) // apply
 //          b
-//        }
+//        } // rewrap
     }
 
   }
@@ -732,13 +732,13 @@ object Main extends App {
       def pure[A](a: A): R => A =
         (_: R) => a
 
-      override def flatMap[A, B](ffa: R => A)(f: A => (R => B)): R => B =
+      override def flatMap[A, B](fa: R => A)(f: A => (R => B)): R => B =
       { r: R =>
-        val a: A = ffa(r)
-        val fb: R => B = f(a)
-        val b: B = fb(r)
+        val a: A = fa(r) // unwrap
+        val fb: R => B = f(a) // apply
+        val b: B = fb(r) // unwrap
         b
-      }
+      } // rewrap
     }
   }
 
@@ -769,9 +769,9 @@ object Main extends App {
       implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new Functor[State[S, ?]] {
         def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
           State(s => {
-            val (sp, a) = fa.run(s)
-            (sp, f(a))
-          })
+            val (sp, a) = fa.run(s) // unwrap
+            (sp, f(a)) // apply
+          }) // rewrap
       }
 
       implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
@@ -782,10 +782,10 @@ object Main extends App {
 
         override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] =
           State(s => {
-            val (sp, a) = fa.run(s)
-            val fb: State[S, B] = f(a)
-            fb.run(sp)
-          })
+            val (sp, a) = fa.run(s) // unwrap
+            val fb: State[S, B] = f(a) // apply
+            fb.run(sp) // unwrap
+          }) // rewrap
       }
     }
 
