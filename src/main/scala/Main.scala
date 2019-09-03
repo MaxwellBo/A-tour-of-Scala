@@ -1,3 +1,4 @@
+
 object Main extends App {
 
   // Things may appear in a weird order. I'm doing that so that you know every
@@ -111,8 +112,8 @@ object Main extends App {
     x
   }
 
-  // println(rawImplicitly[Boolean]) // true
-  // println(rawImplicitly[Int]) // 5
+//   println(rawImplicitly[Boolean]) // true
+//   println(rawImplicitly[Int]) // 5
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -126,8 +127,8 @@ object Main extends App {
   // scala> :k List
   // List's kind is F[+A]
 
-  // println(hktImplicitly[List]) // List(5)
-  // println(hktImplicitly[Option]) // Some(5)
+//   println(hktImplicitly[List]) // List(5)
+//   println(hktImplicitly[Option]) // Some(5)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -383,11 +384,11 @@ object Main extends App {
   ////////////////////////////////////////////////////////////////////////////////
 
   def getAgeFromList(familyMembers: List[FamilyMember]): List[Int] = {
-    familyMembers.map(_.age)
+    familyMembers.map(familyMember => familyMember.age)
   }
 
   def getAgeFromOption(member: Option[FamilyMember]): Option[Int] = {
-    member.map(_.age)
+    member.map(familyMember => familyMember.age)
   }
 
   //  println(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
@@ -396,9 +397,9 @@ object Main extends App {
   //  println(getAgeFromOption(grandma.mother)) // None
 
   // How do we make something like this? 🤔
-  // def getAge[F[_]: ???](f: F[FamilyMember]): F[Int] = {
-  //   f.map(_.age)
-  // }
+//   def getAge[F[_]: ???](f: F[FamilyMember]): F[Int] = {
+//     f.map(_.age)
+//   }
 
   ////////////////////////////////////////////////////////////////////////////////
   // Functor implementation
@@ -676,7 +677,8 @@ object Main extends App {
     _ <- putStrLn("Echoing: " + str)
   } yield ()
 
-  // echo.unsafeInterpret()
+  //   echo.unsafeInterpret()
+  //   echo.unsafeInterpret()
 
   // is equivalent equivalent to
   //   putStrLn("Please enter something to be echoed:")
@@ -728,13 +730,14 @@ object Main extends App {
       override implicit def functorInstance: Functor[R => ?] = function1FunctorInstance
 
       def pure[A](a: A): R => A =
-        (r: R) => a
+        (_: R) => a
 
       override def flatMap[A, B](ffa: R => A)(f: A => (R => B)): R => B =
       { r: R =>
         val a: A = ffa(r)
         val fb: R => B = f(a)
-        fb(r)
+        val b: B = fb(r)
+        b
       }
     }
   }
@@ -810,7 +813,7 @@ object Main extends App {
   } yield s"The final value is $last"
 
   // where 0 is the initial value
-  println(computation.run(0)) // (8, The final value is 8)
+//  println(computation.run(0)) // (8, The final value is 8)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Kleisli - I'm really sorry
@@ -877,15 +880,27 @@ object Main extends App {
       None
   }
 
+  def PUT(request: HttpRequest): Option[Unit] = {
+    if (request.method == "PUT")
+      Some(())
+    else
+      None
+  }
+
   def extractBody(request: HttpRequest): Option[String] =
     request.body
 
   def extractHeader(name: String)(request: HttpRequest): Option[String] =
     request.parameters.get(name)
 
-  def echoController: Kleisli[Option, HttpRequest, HttpResponse] = for {
+  def putHandler: Kleisli[Option, HttpRequest, HttpResponse] = for {
+    _ <- Kleisli(PUT)
+    authHeader <- Kleisli(extractHeader("Authorisation"))
+  } yield HttpResponse("")
+
+  def postHandler: Kleisli[Option, HttpRequest, HttpResponse] = for {
     _ <- Kleisli(POST)
-    _ <- Kleisli(extractHeader("Authorisation"))
+    authHeader <- Kleisli(extractHeader("Authorisation"))
     body <- Kleisli(extractBody)
   } yield HttpResponse(body)
 
@@ -914,33 +929,254 @@ object Main extends App {
     def <>(here: A)(there: A): A
   }
 
+  object Semigroup {
+    object Syntax {
+      implicit class SemigroupIdSyntax[M](here: M) {
+        def <>(there: M)(implicit instance: Semigroup[M]): M = {
+          instance.<>(here)(there)
+        }
+      }
+    }
+
+    object Instances {
+      implicit def listSemigroupInstance[A]: Semigroup[List[A]] = new Semigroup[List[A]] {
+        override def <>(here: List[A])(there: List[A]): List[A] =
+          here ++ there
+      }
+
+      implicit def sumSemigroupInstance[A]: Semigroup[Int] = new Semigroup[Int] {
+        override def <>(here: Int)(there: Int): Int =
+          here + there
+      }
+    }
+
+  }
+
   trait Monoid[A] {
     implicit def semigroupInstance: Semigroup[A]
 
     def identity: A
   }
 
-  object SemigroupSyntax {
+  object Monoid {
+    object Syntax {
+      def identity[M](implicit instance: Monoid[M]): M = instance.identity
+    }
 
-    implicit class SemigroupIdSyntax[M](here: M) {
-      def <>(there: M)(implicit instance: Semigroup[M]): M = {
-        instance.<>(here)(there)
+    object Instances {
+      implicit def listMonoidInstance[A]: Monoid[List[A]] = new Monoid[List[A]] {
+        override def semigroupInstance: Semigroup[List[A]] = Semigroup.Instances.listSemigroupInstance
+        override def identity: List[A] = List.empty
+      }
+
+      implicit def sumMonoidInstance: Monoid[Int] = new Monoid[Int] {
+        override def semigroupInstance: Semigroup[Int] = Semigroup.Instances.sumSemigroupInstance
+        override def identity: Int = 0
       }
     }
 
+    import Semigroup.Syntax._
+    import Syntax._
+
+    def mconcat[M: Monoid](xs: List[M]): M = {
+      implicit val semigroupInstance: Semigroup[M] = implicitly[Monoid[M]].semigroupInstance
+      xs.foldRight(identity)(_ <> _)
+    }
+
+    def mconcatMap[M: Monoid, A](xs: List[A])(f: A => M): M = {
+      mconcat(xs.map(f))
+    }
   }
 
-  object MonoidSyntax {
-    def identity[M](implicit instance: Monoid[M]): M = instance.identity
+  ///////////////////////////////////////////////////////////////////////////////
+  // The Free Monoid
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait Operation
+
+  case object SpecifyTarget extends Operation
+  case class FindTarget(name: String) extends Operation
+  case class LoadTarget(location: (Int, Int)) extends Operation
+
+  case class CheckTarget(location: (Int, Int)) extends Operation
+  case object Fire extends Operation
+
+  def specifyTarget(): List[Operation] =
+    List(SpecifyTarget)
+
+  def findTarget(name: String): List[Operation] =
+    List(FindTarget(name))
+
+  def loadTarget(location: (Int, Int)): List[Operation] =
+    List(LoadTarget(location))
+
+  def checkTarget(location: (Int, Int)): List[Operation] =
+    List(CheckTarget(location))
+
+  def fire(): List[Operation] =
+    List(Fire)
+
+  import Semigroup.Instances._
+  import Semigroup.Syntax._
+  import Monoid.Instances._
+
+  def prepare(): List[Operation] =
+    specifyTarget() <> findTarget("Max") <> loadTarget((82, 43))
+
+  def launch(): List[Operation] =
+    checkTarget((82, 43)) <> fire()
+
+  def mission: List[Operation] =
+    prepare() <> launch()
+
+  def prodInterpreter(op: Operation): List[Unit] = {
+    op match {
+      case SpecifyTarget => println("Accepting target specification")
+      case FindTarget(name) => println(s"Locating target called $name")
+      case LoadTarget(location) => println(s"Locking missile onto target of coordinate $location")
+      case CheckTarget(location) => println(s"Checking for civilians at coordinate $location")
+      case Fire => println("Fox-3")
+    }
+
+    List(())
   }
 
-  import SemigroupSyntax._
-  import MonoidSyntax._
-
-  def concat[M: Monoid](xs: List[M]): M = {
-    implicit val semigroupInstance: Semigroup[M] = implicitly[Monoid[M]].semigroupInstance
-    xs.foldRight(identity)(_ <> _)
+  def testInterpreter(op: Operation): List[Operation] = {
+    List(op)
   }
+
+//  Monoid.mconcatMap(mission)(prodInterpreter)
+//  println(Monoid.mconcatMap(mission)(testInterpreter))
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // The Free Monad
+  ///////////////////////////////////////////////////////////////////////////////
+  // https://stackoverflow.com/a/13388966/5835579
+
+  type ~>[F[_], G[_]] = NaturalTransformation[F, G]
+
+  trait NaturalTransformation[F[_], G[_]] { self =>
+    def apply[A](fa: F[A]): G[A]
+  }
+
+  sealed trait Free[G[_], A] { self: Free[G, A] =>
+    def foldMap[F[_]: Monad](nt: G ~> F): F[A] = {
+      self match {
+        case Pure(a) => a.pure[F]
+        case Suspend(ga) => nt(ga)
+        case FlatMapped(free, f) =>
+          // do not try this at home
+          free.foldMap[F](nt).flatMap(a => f(a).foldMap[F](nt))
+      }
+    }
+  }
+
+  final case class Pure[G[_], A](a: A) extends Free[G, A]
+  final case class Suspend[G[_], A](ga: G[A]) extends Free[G, A]
+  final case class FlatMapped[G[_], A, B](fa: Free[G, A], f: A => Free[G, B]) extends Free[G, B]
+
+  object Free {
+    def suspend[G[_], A](ga: G[A]): Free[G, A] =
+      Suspend(ga)
+
+    object Instances {
+      implicit def freeFunctorInstance[G[_]]: Functor[Free[G, ?]] = new Functor[Free[G, ?]] {
+        def map[A, B](fa: Free[G, A])(f: A => B): Free[G, B] =
+          freeMonadInstance.flatMap(fa)(a => Pure(f(a)))
+      }
+
+      implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new Monad[Free[G, ?]] {
+        override implicit def functorInstance: Functor[Free[G, ?]] = freeFunctorInstance
+
+        def pure[A](a: A): Free[G, A] = Pure(a)
+
+        override def flatMap[A, B](fa: Free[G, A])(f: A => Free[G, B]): Free[G, B] =
+          FlatMapped(fa, f)
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // The Free Monad Usage
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait OperationM[A]
+
+  case object SpecifyTargetM extends OperationM[String]
+  case class FindTargetM(name: String) extends OperationM[(Int, Int)]
+  case class LoadTargetM(location: (Int, Int)) extends OperationM[Unit]
+
+  case class CheckTargetM(location: (Int, Int)) extends OperationM[Boolean]
+  case object FireM extends OperationM[Unit]
+  case object AbortM extends OperationM[Unit]
+
+  def specifyTargetM(): Free[OperationM, String] =
+    Free.suspend(SpecifyTargetM)
+
+  def findTargetM(name: String): Free[OperationM, (Int, Int)] =
+    Free.suspend(FindTargetM(name: String))
+
+  def loadTargetM(location: (Int, Int)): Free[OperationM, Unit] =
+    Free.suspend(LoadTargetM(location))
+
+  def checkTargetM(location: (Int, Int)): Free[OperationM, Boolean] =
+    Free.suspend(CheckTargetM(location))
+
+  def fireM(): Free[OperationM, Unit] =
+    Free.suspend(FireM)
+
+  def abortM(): Free[OperationM, Unit] =
+    Free.suspend(AbortM)
+
+
+  import Free.Instances._
+
+  def prepareM(): Free[OperationM, (Int, Int)] = for {
+    name <- specifyTargetM()
+    coords <- findTargetM(name)
+    _ <- loadTargetM(coords)
+  } yield coords
+
+  def launchM(location: (Int, Int)): Free[OperationM, Unit] = {
+    for {
+      valid <- checkTargetM(location)
+      _ <- if (valid)
+        fireM()
+      else
+        abortM()
+    } yield ()
+  }
+
+  def missionM: Free[OperationM, Unit] = for {
+    target <- prepareM()
+    _ <- launchM(target)
+  } yield ()
+
+  def prodInterpreterM: OperationM ~> Sync = new (OperationM ~> Sync) {
+    override def apply[A](fa: OperationM[A]): Sync[A] =
+      fa match {
+        case SpecifyTargetM =>
+          getStrLn
+        case FindTargetM(name) =>
+          if (name == "Max")
+            (82, 43).pure[Sync]
+          else
+            (20, 36).pure[Sync]
+        case LoadTargetM(location) =>
+          putStrLn(s"Locking missile onto target of coordinate $location")
+        case CheckTargetM(location) =>
+          ((82, 43) != location).pure[Sync]
+        case FireM =>
+          putStrLn("Fox-3")
+        case AbortM =>
+          putStrLn("Don't try and kill Max")
+      }
+  }
+
+  val syncMission: Sync[Unit] = missionM.foldMap(prodInterpreterM)
+
+  syncMission.unsafeInterpret()
+  syncMission.unsafeInterpret()
 
   ///////////////////////////////////////////////////////////////////////////////
   // "Mapped" types
@@ -971,4 +1207,22 @@ object Main extends App {
 
   //  def concatMap[A, M: Monoid](xs: List[A], interp: A => M): M
   //  def concatFlatMap[A, G, M: Monad](xs: Free[F, A], interp: G[A] ~> M[A]): M[A]
+
+  trait Applicative[F[_]] {
+//    implicit def functorInstance: Functor[F]
+//
+//    def pure[A](a: A): F[A]
+    def ap[A, B](ff: F[A => B])(fa: F[A]): F[B]
+  }
+
+  object ApplicativeInstances {
+    implicit val optionApplicative: Applicative[Option] = new Applicative[Option] {
+      override def ap[A, B](ff: Option[A => B])(fa: Option[A]): Option[B] = {
+        (ff, fa) match {
+          case (Some(f), Some(a)) => Some(f(a))
+          case _ => None
+        }
+      }
+    }
+  }
 }
