@@ -1,3 +1,6 @@
+import java.io.File
+
+import scala.io.Source
 
 object Main extends App {
 
@@ -9,7 +12,7 @@ object Main extends App {
   // Polymorphism
   ///////////////////////////////////////////////////////////////////////////////
 
-  trait Animal {
+  sealed trait Animal {
     def sound: String
   }
 
@@ -17,13 +20,14 @@ object Main extends App {
     def sound: String = "woof"
   }
 
-  case class Cat() extends Animal {
+  case class Cat(name: String) extends Animal {
     def sound: String = "meow"
   }
 
   ///////////////////////////////////////////////////////////////////////////////
 
   def makeSound(animal: Animal): Unit = {
+
     println(animal.sound)
   }
 
@@ -41,6 +45,23 @@ object Main extends App {
   import ThirdPartyLibrary.Rabbit
 
   // makeSound(Rabbit())
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Pattern matching = Type recognition + destructuring
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val (x, y) = (1, 2) // destructuring a tuple
+
+  val Cat(name) = Cat("Boris")
+
+  val animal: Animal = Dog()
+
+  val result = animal match { // demo case (exhaustive)
+    case Cat(n) => s"Saw a cat with name $n"
+    case Dog() => "Saw a dog"
+  }
+
+//  println(result)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function calling semantic oddities
@@ -104,6 +125,8 @@ object Main extends App {
   //  controller()
 
   ///////////////////////////////////////////////////////////////////////////////
+  // Implicit resolution is type directed!
+  ///////////////////////////////////////////////////////////////////////////////
 
   implicit val implicitBoolean: Boolean = true
   implicit val implicitInt: Int = 5
@@ -115,6 +138,8 @@ object Main extends App {
 //   println(rawImplicitly[Boolean]) // true
 //   println(rawImplicitly[Int]) // 5
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // Generic parameters can be higher-kinded, and is compatible with implicit resolution
   ///////////////////////////////////////////////////////////////////////////////
 
   implicit val implicitListInt: List[Int] = List(5)
@@ -409,37 +434,41 @@ object Main extends App {
     def map[A, B](fa: F[A])(f: A => B): F[B]
   }
 
-  object FunctorSyntax {
-
-    implicit final class FunctorExtensions[F[_], A](private val self: F[A]) extends AnyVal {
-      def map[B](f: A => B)(implicit instance: Functor[F]): F[B] = {
-        instance.map(self)(f)
+  object Functor {
+    object Syntax {
+      implicit final class FunctorExtensions[F[_], A](private val self: F[A]) extends AnyVal {
+        def map[B](f: A => B)(implicit instance: Functor[F]): F[B] = {
+          instance.map(self)(f)
+        }
       }
     }
 
-  }
+    object Instances {
+      // @ List(1, 2, 3).map(x => x + 1)
+      // res0: List[Int] = List(2, 3, 4)
+      implicit val listFunctorInstance: Functor[List] = new Functor[List] {
+        def map[A, B](fa: List[A])(f: A => B): List[B] = fa.map(f) // very scary reimplementation, let's not do that and use the stdlib
+      }
 
-  object FunctorInstances {
-    // @ List(1, 2, 3).map(x => x + 1)
-    // res0: List[Int] = List(2, 3, 4)
-    implicit val listFunctorInstance: Functor[List] = new Functor[List] {
-      def map[A, B](fa: List[A])(f: A => B): List[B] = fa.map(f) // very scary reimplementation, let's not do that and use the stdlib
-    }
-
-    implicit val optionFunctorInstance: Functor[Option] = new Functor[Option] {
-      def map[A, B](fa: Option[A])(f: A => B): Option[B] = fa match {
-        case Some(a) => Some(f(a))
-        case None => None
+      implicit val optionFunctorInstance: Functor[Option] = new Functor[Option] {
+        def map[A, B](fa: Option[A])(f: A => B): Option[B] = fa match {
+          // unwrap              apply
+          //             rewrap
+          case Some(a) => Some(f(a))
+          case None => None
+        }
       }
     }
   }
+
+
 
   ////////////////////////////////////////////////////////////////////////////////
   // Functor usage
   ////////////////////////////////////////////////////////////////////////////////
 
-  import FunctorInstances._
-  import FunctorSyntax._
+  import Functor.Instances._
+  import Functor.Syntax._
 
   def getAge[F[_] : Functor](f: F[FamilyMember]): F[Int] = {
     f.map(_.age)
@@ -510,6 +539,8 @@ object Main extends App {
   ////////////////////////////////////////////////////////////////////////////////
   // Or a reasonable solution
   ////////////////////////////////////////////////////////////////////////////////
+  // DOCUMENTATION:
+  // https://typelevel.org/cats/typeclasses/monad.html
 
   trait Monad[F[_]] {
     implicit def functorInstance: Functor[F]
@@ -562,6 +593,7 @@ object Main extends App {
       def pure[A](a: A): Option[A] = Some(a)
 
       override def flatten[A](ffa: Option[Option[A]]): Option[A] = ffa match {
+        // unwrap unwrap      rewrap
         case Some(Some(a)) => Some(a)
         case _ => None
       }
@@ -654,6 +686,8 @@ object Main extends App {
         def pure[A](a: A): Sync[A] = Sync.effect(a)
 
         override def flatten[A](ffa: Sync[Sync[A]]): Sync[A] =
+          //                      unwrap unwrap
+          // rewrap
           Sync.effect(ffa.unsafeInterpret().unsafeInterpret())
       }
     }
@@ -702,6 +736,8 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
   // The reader Functor
   ///////////////////////////////////////////////////////////////////////////////
+  // DOCUMENTATION
+  // - https://typelevel.org/cats/typeclasses/functor.html
 
   object Function1FunctorInstances {
     implicit def function1FunctorInstance[R]: Functor[R => ?] = new Functor[R => ?] {
@@ -716,7 +752,6 @@ object Main extends App {
 
   }
 
-  import FunctorSyntax._
   import Function1FunctorInstances._
 
   val isBigNumberM: Int => Boolean = showInt.map(isBigString)
@@ -757,6 +792,125 @@ object Main extends App {
   //          .map(isEven => (addOne, toString, isEven))))
   //
   //   println(doTransforms(0)) // (1, "0", true)
+
+  ///////////////////////////////////////////////////////////////////////////////
+  //  Does composition always work?
+  ///////////////////////////////////////////////////////////////////////////////
+
+  def getMother: FamilyMember => Option[FamilyMember] =
+    (familyMember: FamilyMember) => familyMember.mother
+
+  // 😔
+//  val getGrandMother = getMother.map(getMother)
+
+  // 😔
+//  val getMotherAge: FamilyMember => Option[Int]
+//    getMother.map(grandmother => grandmother.age)
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Kleisli - I'm really sorry
+  ///////////////////////////////////////////////////////////////////////////////
+
+  final case class Kleisli[F[_] : Monad, A, B](run: A => F[B]) {
+    def andThen[C](k: Kleisli[F, B, C]): Kleisli[F, A, C] =
+      Kleisli(a => run(a).flatMap(k.run))
+  }
+
+  object Kleisli {
+    object Instances {
+      implicit def kleisliFunctorInstance[F[_] : Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
+        def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
+          implicit val functorInstance: Functor[F] = implicitly[Monad[F]].functorInstance
+          Kleisli(rfa.run.map(fa => fa.map(f)))
+        }
+      }
+
+      implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
+        override implicit def functorInstance: Functor[Kleisli[F, R, ?]] = kleisliFunctorInstance
+
+        def pure[A](a: A): Kleisli[F, R, A] =
+          Kleisli(a.pure[F].pure[R => ?])
+
+        override def flatten[A](ffa: Kleisli[F, R, Kleisli[F, R, A]]): Kleisli[F, R, A] =
+          //              unwrap                unwrap
+          // rewrap
+          Kleisli(r => ffa.run(r).flatMap(fa => fa.run(r)))
+      }
+    }
+  }
+
+  import Kleisli.Instances._
+
+  def getMotherK: Kleisli[Option, FamilyMember, FamilyMember] =
+    Kleisli(getMother)
+
+  val getGreatGrandmotherAgeR: FamilyMember => Option[Int] =
+    getMotherK.andThen(getMotherK).andThen(getMotherK).map(_.age).run
+
+  //  println(getGreatGrandmotherAgeR(son)) // Some(103)
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Fake Akka directives
+  ///////////////////////////////////////////////////////////////////////////////
+
+  case class HttpRequest(method: String, parameters: Map[String, String], body: Option[String])
+  case class HttpResponse(body: Option[String])
+  case class JwtToken(claims: List[String])
+
+  def POST(request: HttpRequest): Option[Unit] = {
+    if (request.method == "POST")
+      Some(())
+    else
+      None
+  }
+
+  def extractBody(request: HttpRequest): Option[String] =
+    request.body
+
+  def extractHeader(name: String)(request: HttpRequest): Option[String] =
+    request.parameters.get(name)
+
+  def parseJwtToken(token: String): Option[JwtToken] =
+    Some(JwtToken(claims = List(token)))
+
+  def extractJWT(): HttpRequest => Option[JwtToken] =
+    Kleisli(extractHeader("Authorisation"))
+      .andThen(Kleisli(parseJwtToken))
+      .run
+
+  def isAdmin: HttpRequest => Option[Boolean] =
+    Kleisli(extractJWT())
+      .map(_.claims.contains("Admin"))
+      .run
+
+  def postHandler: Kleisli[Option, HttpRequest, HttpResponse] = for {
+    _ <- Kleisli(POST)
+    _ <- Kleisli(isAdmin)
+    body <- Kleisli(extractBody)
+  } yield HttpResponse(Some(body))
+
+  //  println(echoController.run(
+  //    HttpRequest(
+  //      "POST",
+  //      Map("Authorisation" -> "Admin"),
+  //      Some("Hello world")
+  //  ))) // Some(HttpResponse("Hello world"))
+
+  //  println(echoController.run(
+  //    HttpRequest(
+  //      "POST",
+  //      Map("Authorisation" -> "Not Admin"),
+  //      Some("Hello world")
+  //  ))) // None
+
+  //  println(echoController.run(
+  //    HttpRequest(
+  //      "GET",
+  //      Map("Authorisation" -> "Admin"),
+  //      Some("Hello world")
+  //  ))) // None
+
+  type ReaderT[F[_], A, B] = Kleisli[F, A, B]
 
   ///////////////////////////////////////////////////////////////////////////////
   // State - where we're going, we don't need variables
@@ -813,117 +967,20 @@ object Main extends App {
   } yield s"The final value is $last"
 
   // where 0 is the initial value
-//  println(computation.run(0)) // (8, The final value is 8)
+  //  println(computation.run(0)) // (8, The final value is 8)
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Kleisli - I'm really sorry
-  ///////////////////////////////////////////////////////////////////////////////
+//val computationTake2 = State.put(5)
+//      .flatMap(_ => State.get())
+//      .map(x => x + 1)
 
-  final case class Kleisli[F[_] : Monad, A, B](run: A => F[B]) {
-    def andThen[C](k: Kleisli[F, B, C]): Kleisli[F, A, C] =
-      Kleisli(a => run(a).flatMap(k.run))
-  }
-
-  object Kleisli {
-
-    object Instances {
-      implicit def kleisliFunctorInstance[F[_] : Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
-        def map[A, B](fa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
-          implicit val functorInstance: Functor[F] = implicitly[Monad[F]].functorInstance
-
-          Kleisli(r => fa.run(r).map(f)) // demo types
-        }
-      }
-
-      implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
-        override implicit def functorInstance: Functor[Kleisli[F, R, ?]] = kleisliFunctorInstance
-
-        def pure[A](a: A): Kleisli[F, R, A] =
-          Kleisli(r => a.pure[F])
-
-        override def flatten[A](ffa: Kleisli[F, R, Kleisli[F, R, A]]): Kleisli[F, R, A] =
-          Kleisli(r => ffa.run(r).flatMap(_.run(r))) // demo with rewrite
-      }
-    }
-
-  }
-
-  import Kleisli.Instances._
-
-  def getMother(familyMember: FamilyMember): Option[FamilyMember] = {
-    familyMember.mother
-  }
-
-  def getMotherK: Kleisli[Option, FamilyMember, FamilyMember] = {
-    Kleisli(getMother)
-  }
-
-  val getGreatGrandmotherAgeR: FamilyMember => Option[Int] =
-    getMotherK.andThen(getMotherK).andThen(getMotherK).map(_.age).run
-
-  //  println(getGreatGrandmotherAgeR(son)) // Some(103)
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Fake Akka directives
-  ///////////////////////////////////////////////////////////////////////////////
-
-  case class HttpRequest(method: String, parameters: Map[String, String], body: Option[String])
-
-  case class HttpResponse(body: String)
-
-  case class JwtToken()
-
-  def POST(request: HttpRequest): Option[Unit] = {
-    if (request.method == "POST")
-      Some(())
-    else
-      None
-  }
-
-  def PUT(request: HttpRequest): Option[Unit] = {
-    if (request.method == "PUT")
-      Some(())
-    else
-      None
-  }
-
-  def extractBody(request: HttpRequest): Option[String] =
-    request.body
-
-  def extractHeader(name: String)(request: HttpRequest): Option[String] =
-    request.parameters.get(name)
-
-  def putHandler: Kleisli[Option, HttpRequest, HttpResponse] = for {
-    _ <- Kleisli(PUT)
-    authHeader <- Kleisli(extractHeader("Authorisation"))
-  } yield HttpResponse("")
-
-  def postHandler: Kleisli[Option, HttpRequest, HttpResponse] = for {
-    _ <- Kleisli(POST)
-    authHeader <- Kleisli(extractHeader("Authorisation"))
-    body <- Kleisli(extractBody)
-  } yield HttpResponse(body)
-
-  //  println(echoController.run(
-  //    HttpRequest(
-  //      "POST",
-  //      Map("Authorisation" -> "Yes"),
-  //      Some("Hello world")
-  //  ))) // Some(HttpResponse("Hello world"))
-
-  //  println(echoController.run(
-  //    HttpRequest(
-  //      "GET",
-  //      Map("Authorisation" -> "Yes"),
-  //      Some("Hello world")
-  //  ))) // None
-
-  type ReaderT[F[_], A, B] = Kleisli[F, A, B]
+//  println(computationTake2.run(0)) // what's the final value?
 
   ///////////////////////////////////////////////////////////////////////////////
   // Semigroups and Monoids
   ///////////////////////////////////////////////////////////////////////////////
-  //  https://en.wikipedia.org/wiki/Algebraic_structure
+  // DOCUMENTATION:
+  // - https://en.wikipedia.org/wiki/Algebraic_structure
+  // - https://typelevel.org/cats/typeclasses/monoid.html
 
   trait Semigroup[A] {
     def <>(here: A)(there: A): A
@@ -948,8 +1005,23 @@ object Main extends App {
         override def <>(here: Int)(there: Int): Int =
           here + there
       }
-    }
 
+      implicit def mapRightBiasSemigroupInstance[K, V]: Semigroup[Map[K, V]] = new Semigroup[Map[K, V]] {
+        override def <>(here: Map[K, V])(there: Map[K, V]): Map[K, V] = {
+          var collector: Map[K, V] = Map.empty
+
+          here.foreach { kv =>
+              collector = collector + kv
+          }
+
+          there.foreach { kv =>
+            collector = collector + kv
+          }
+
+          collector
+        }
+      }
+    }
   }
 
   trait Monoid[A] {
@@ -973,6 +1045,11 @@ object Main extends App {
         override def semigroupInstance: Semigroup[Int] = Semigroup.Instances.sumSemigroupInstance
         override def identity: Int = 0
       }
+
+      implicit def mapRightBiasMonoidInstance[K, V]: Monoid[Map[K, V]] = new Monoid[Map[K, V]] {
+        override def semigroupInstance: Semigroup[Map[K, V]] = Semigroup.Instances.mapRightBiasSemigroupInstance
+        override def identity: Map[K, V] = Map.empty
+      }
     }
 
     import Semigroup.Syntax._
@@ -992,56 +1069,73 @@ object Main extends App {
   // The Free Monoid
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Operation
+  sealed trait FileOp
 
-  case object SpecifyTarget extends Operation
-  case class FindTarget(name: String) extends Operation
+  case class WriteFile(filename: String, contents: String) extends FileOp
+  case class ReadFile(filename: String) extends FileOp
+  case class DeleteFile(filename: String) extends FileOp
 
-  case class CheckTarget(location: (Int, Int)) extends Operation
-  case object Fire extends Operation
+  def writeFile(filename: String, contents: String): List[FileOp] =
+    List(WriteFile(filename, contents))
 
-  def specifyTarget(): List[Operation] =
-    List(SpecifyTarget)
+  def readFile(name: String): List[FileOp] =
+    List(ReadFile(name))
 
-  def findTarget(name: String): List[Operation] =
-    List(FindTarget(name))
-
-  def checkTarget(location: (Int, Int)): List[Operation] =
-    List(CheckTarget(location))
-
-  def fire(): List[Operation] =
-    List(Fire)
+  def deleteFile(filename: String): List[FileOp] =
+    List(DeleteFile(filename))
 
   import Semigroup.Instances._
   import Semigroup.Syntax._
   import Monoid.Instances._
 
-  def prepare(): List[Operation] =
-    specifyTarget() <> findTarget("Max")
+  val program: List[FileOp] = {
+    writeFile("a.txt", "a") <>
+      deleteFile("b.txt") <>
+      writeFile("b.txt", "b")
+  }
 
-  def launch(): List[Operation] =
-    checkTarget((82, 43)) <> fire()
+  import java.io.PrintWriter
 
-  def mission: List[Operation] =
-    prepare() <> launch()
-
-  def prodInterpreter(op: Operation): List[Unit] = {
+  def prodInterpreter(op: FileOp): List[Unit] = {
     op match {
-      case SpecifyTarget => println("Accepting target specification")
-      case FindTarget(name) => println(s"Locating target called $name")
-      case CheckTarget(location) => println(s"Checking for civilians at coordinate $location")
-      case Fire => println("Fox-3")
+      case WriteFile(filename, contents) => {
+        new PrintWriter(filename) {
+          write(contents)
+          close()
+        }
+      }
+      case ReadFile(filename) => {
+        val source = Source.fromFile(filename)
+        val lines: String = try source.mkString finally source.close()
+        println(lines)
+      }
+      case DeleteFile(filename) => {
+        new File(filename).delete()
+      }
     }
 
-    List(())
+    List()
   }
 
-  def testInterpreter(op: Operation): List[Operation] = {
-    List(op)
+  def testInterpreter(op: FileOp): Map[String, Option[String]] = {
+    op match {
+      case WriteFile(filename, contents) =>
+        Map(filename -> Some(contents))
+      case ReadFile(filename) =>
+        Map.empty
+      case DeleteFile(filename) =>
+        Map[String, Option[String]](filename -> None)
+    }
   }
 
-//  Monoid.mconcatMap(mission)(prodInterpreter)
-//  println(Monoid.mconcatMap(mission)(testInterpreter))
+  println(Monoid.mconcatMap(program)(prodInterpreter))
+  println(Monoid.mconcatMap(program)(testInterpreter))
+
+  // 🤔
+  def appendFile(filename: String, contents: String): List[FileOp] = {
+    val oldContents = readFile(filename)
+    deleteFile(filename) <> writeFile(filename, oldContents + contents)
+  }
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monad
@@ -1059,9 +1153,9 @@ object Main extends App {
       self match {
         case Pure(a) => a.pure[F]
         case Suspend(ga) => nt(ga)
-        case FlatMapped(free, f) =>
+        case FlatMapped(fa, f) =>
           // do not try this at home
-          free.foldMap[F](nt).flatMap(a => f(a).foldMap[F](nt))
+          fa.foldMap[F](nt).flatMap(a => f(a).foldMap[F](nt))
       }
     }
   }
@@ -1095,110 +1189,93 @@ object Main extends App {
   // The Free Monad Usage
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait OperationM[A]
+  sealed trait FileOpM[A]
 
-  case object SpecifyTargetM extends OperationM[String]
-  case class FindTargetM(name: String) extends OperationM[(Int, Int)]
-  case class LoadTargetM(location: (Int, Int)) extends OperationM[Unit]
+  case class WriteFileM(filename: String, contents: String) extends FileOpM[Unit]
+  case class ReadFileM(filename: String) extends FileOpM[String]
+  case class DeleteFileM(filename: String) extends FileOpM[Unit]
 
-  case class CheckTargetM(location: (Int, Int)) extends OperationM[Boolean]
-  case object FireM extends OperationM[Unit]
-  case object AbortM extends OperationM[Unit]
+  def writeFileM(filename: String, contents: String): Free[FileOpM, Unit] =
+    Free.suspend(WriteFileM(filename, contents))
 
-  def specifyTargetM(): Free[OperationM, String] =
-    Free.suspend(SpecifyTargetM)
+  def readFileM(filename: String): Free[FileOpM, String] =
+    Free.suspend(ReadFileM(filename))
 
-  def findTargetM(name: String): Free[OperationM, (Int, Int)] =
-    Free.suspend(FindTargetM(name))
-
-  def loadTargetM(location: (Int, Int)): Free[OperationM, Unit] =
-    Free.suspend(LoadTargetM(location))
-
-  def checkTargetM(location: (Int, Int)): Free[OperationM, Boolean] =
-    Free.suspend(CheckTargetM(location))
-
-  def fireM(): Free[OperationM, Unit] =
-    Free.suspend(FireM)
-
-  def abortM(): Free[OperationM, Unit] =
-    Free.suspend(AbortM)
-
+  def deleteFileM(filename: String): Free[FileOpM, Unit] =
+    Free.suspend(DeleteFileM(filename))
 
   import Free.Instances._
-  import Main.Monoid.mconcat
 
-  def prepareM(): Free[OperationM, (Int, Int)] = for {
-    name <- specifyTargetM()
-    coords <- findTargetM(name)
-  } yield coords
-
-  def launchM(location: (Int, Int)): Free[OperationM, Unit] = {
-    for {
-      valid <- checkTargetM(location)
-      _ <- if (valid)
-        fireM()
-      else
-        abortM()
-    } yield ()
-  }
-
-  def missionM: Free[OperationM, Unit] = for {
-    target <- prepareM()
-    _ <- launchM(target)
+  def appendFileM(filename: String, contents: String): Free[FileOpM, Unit] = for {
+    oldContents <- readFileM(filename)
+    _ <- deleteFileM(filename)
+    _ <- writeFileM(filename, oldContents + contents)
   } yield ()
 
-  def prodInterpreterM: OperationM ~> Sync = new (OperationM ~> Sync) {
-    override def apply[A](fa: OperationM[A]): Sync[A] =
+  val programM = for {
+    _ <- writeFileM("aM.txt", "aM")
+    _ <- deleteFileM("aM.txt")
+    _ <- writeFileM("bM.txt", "bM")
+    _ <- appendFileM("bM.txt", "cM")
+  } yield ()
+
+  def prodInterpreterM: FileOpM ~> Sync = new (FileOpM ~> Sync) {
+    override def apply[A](fa: FileOpM[A]): Sync[A] =
       fa match {
-        case SpecifyTargetM =>
-          getStrLn
-        case FindTargetM(name) =>
-          if (name == "Max")
-            (82, 43).pure[Sync]
-          else
-            (20, 36).pure[Sync]
-        case CheckTargetM(location) =>
-          ((82, 43) != location).pure[Sync]
-        case FireM =>
-          putStrLn("Fox-3")
-        case AbortM =>
-          putStrLn("Don't try and kill Max")
+        case WriteFileM(filename, contents) => Sync.effect {
+          new PrintWriter(filename) {
+            write(contents)
+            close()
+          }
+          ()
+        }
+        case ReadFileM(filename) => Sync.effect {
+          val source = Source.fromFile(filename)
+          val lines: String = try source.mkString finally source.close()
+          lines
+        }
+        case DeleteFileM(filename) => Sync.effect {
+          new File(filename).delete()
+          ()
+        }
       }
   }
 
-  val syncMission: Sync[Unit] = missionM.foldMap(prodInterpreterM)
-//  syncMission.unsafeInterpret()
-//  syncMission.unsafeInterpret()
+  val effect: Sync[Unit] = programM.foldMap(prodInterpreterM)
 
-  type TestResult[A] = State[Option[FamilyMember], A]
+  effect.unsafeInterpret()
 
-  def testInterpreterM(checkSucceeds: Boolean): OperationM ~> TestResult = new (OperationM ~> TestResult) {
-    override def apply[A](fa: OperationM[A]): TestResult[A] =
+  type TestState = Map[String, String]
+  type TestResult[A] = State[TestState, A]
+
+  def testInterpreterM: FileOpM ~> TestResult = new (FileOpM ~> TestResult) {
+    override def apply[A](fa: FileOpM[A]): TestResult[A] =
       fa match {
-        case SpecifyTargetM => "Max".pure[TestResult]
-        case FindTargetM(name) => (82, 43).pure[TestResult]
-        case CheckTargetM(_) => checkSucceeds.pure[TestResult]
-        case FireM => State.put(None)
-        case AbortM => ().pure[TestResult]
+        case WriteFileM(filename, contents) =>
+          State.modify[TestState] { s: TestState =>
+            s.+(filename, contents)
+          }
+        case ReadFileM(filename) =>
+          State.get[TestState]().map { s =>
+            s(filename)
+          }
+        case DeleteFileM(filename) =>
+          State.modify[TestState] { s: TestState =>
+            s.view.filterKeys(_ != filename)
+          }
       }
   }
 
-  val stateMissionExpectDead: State[Option[FamilyMember], Unit] =
-    missionM.foldMap(testInterpreterM(checkSucceeds = true))
+  val mockEffect: State[Map[String, String], Unit] =
+    programM.foldMap(testInterpreterM)
 
-//  println(stateMissionExpectDead.run(Some(nana))) // (None, ())
-
-  val stateMissionExpectLiving: State[Option[FamilyMember], Unit] =
-    missionM.foldMap(testInterpreterM(checkSucceeds = false))
-
-//  println(stateMissionExpectLiving.run(Some(nana))) // (Some(...), ())
-
+  println(mockEffect.run(Map.empty))
 
   ///////////////////////////////////////////////////////////////////////////////
   // Why is it called the Free Monad
   ///////////////////////////////////////////////////////////////////////////////
 
-  // def mconcatMap[M: Monoid, G](xs: List[G])(f: G => M): M = {
+  // def mconcatMap[M: Monoid, G]  (xs: List[G])    (f: G => M):   M = {
   // def foldMap[F[_]: Monad, G, A](fa: Free[G, A])(nt: G ~> F): F[A] = {
 
   ///////////////////////////////////////////////////////////////////////////////
