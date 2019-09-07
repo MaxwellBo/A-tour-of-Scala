@@ -16,7 +16,7 @@ Over the last 3 years, there've been times where I've needed to explain various 
 
 This is my take on Base. It's a [single file](https://github.com/MaxwellBo/A-tour-of-Scala/blob/master/src/main/scala/Main.scala) designed to be presented in a lecture format, scrolling start to finish. 
 
-So far, it has from-scratch, simplistic^^ reimplementations of
+So far, it has from-scratch, simplistic^ reimplementations of
 
 - The typeclass pattern
 - `Functor`, `Monad` for commonly used types (e.g. `R => ?`, `List`, `Option`)
@@ -26,13 +26,13 @@ So far, it has from-scratch, simplistic^^ reimplementations of
 - `Kleisli/ReaderT`
 - `Free`
  
-It is _not_ an attempt to teach functional programming from the ground up^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of copy-pastable example code, with little indirection for maximal `Go to definition`-ability. 
+It is _not_ an attempt to teach functional programming from the ground up^^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of copy-pastable example code, with little indirection for maximal `Go to definition`-ability. 
 
 
+^ I've had to make some things simpler at the cost of expressiveness. An example includes `Monad` not extending `Functor`, but requiring `Functor` as a `implicit def`. This isn't the "correct" way to do things. 
 
-^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/) or the [QFPL Applied Functional Programming course](https://github.com/qfpl/applied-fp-course).
+^^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/) or the [QFPL Applied Functional Programming course](https://github.com/qfpl/applied-fp-course).
 
-^^ I've had to make some things simpler at the cost of expressiveness. An example includes `Monad` not extending `Functor`, but requiring `Functor` as a `implicit def`. This isn't the "correct" way to do things. 
 
 ## Contributing
 
