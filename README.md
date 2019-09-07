@@ -31,7 +31,8 @@ It is _not_ an attempt to teach functional programming from the ground up^ - rat
 
 
 ^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/) or the [QFPL Applied Functional Programming course](https://github.com/qfpl/applied-fp-course).
-^^ I've had to make some things simpler at the cost of expressiveness. An example includes `Monad` not extending `Functor`, but requiring `Functor` as a `implicit def`
+
+^^ I've had to make some things simpler at the cost of expressiveness. An example includes `Monad` not extending `Functor`, but requiring `Functor` as a `implicit def`. This isn't the "correct" way to do things. 
 
 ## Contributing
 
