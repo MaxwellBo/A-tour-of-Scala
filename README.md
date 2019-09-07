@@ -16,7 +16,7 @@ Over the last 3 years, there've been times where I've needed to explain various 
 
 This is my take on it. It's a [single file](https://github.com/MaxwellBo/A-tour-of-Scala/blob/master/src/main/scala/Main.scala) designed to be presented in a lecture format, scrolling start to finish. 
 
-So far, it has from scratch reimplementations of
+So far, it has from-scratch reimplementations of
 
 - The typeclass pattern
 - `Functor`, `Monad` for commonly used types (e.g. `R => ?`, `List`, `Option`)
