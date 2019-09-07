@@ -1,6 +1,6 @@
 # A tour of Scala
 
-> Scala is what happens when somebody takes OCaml, mixes in some Haskell, adds some Java coloured sprinkles in the mix, and and randomly shoves the whole thing together into a garbage disposal and lights itbefore running away laughing maniacally.
+> Scala is what happens when somebody takes OCaml, mixes in some Haskell, adds some Java coloured sprinkles in the mix, and and randomly shoves the whole thing together into a garbage disposal and lights it before running away laughing maniacally.
 
 > Which is to say, Scala is a bipolar, flawed, genius with a massive ego and huge ambitions. It is both utterly brilliant and utterly terrible at the same time, with the "Utterly Brilliant" shining more brightly. It is perhaps the programming language equivalent of Roman Polanski.
 
