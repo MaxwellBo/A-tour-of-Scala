@@ -12,7 +12,7 @@
 
 ---
 
-Over the last 3 years, there's been times where I've needed to explain various functional concepts as they exist in Scala.  Typically, all that functional goodness is locked up in libraries like [Cats](https://github.com/scalaz/scalaz) and [Scalaz](https://scalaz.github.io/7/). Unfortunately, these libraries are labarinythian - a tall tower of abstractions, obscured by hacks to improve syntax ergonomics and performance. Digging through their source code is nothing like the quite readable [Base](http://hackage.haskell.org/package/base-4.12.0.0/docs/src/GHC.Base.html) package of Haskell.
+Over the last 3 years, there's been times where I've needed to explain various functional concepts as they exist in Scala.  Typically, all that functional goodness is locked up in libraries like [Cats](https://github.com/scalaz/scalaz) and [Scalaz](https://scalaz.github.io/7/). Unfortunately, these libraries are labarinythian - a tall tower of abstractions, obscured by hacks to improve syntax ergonomics and performance. Their source code is nothing like the quite readable [Base](http://hackage.haskell.org/package/base-4.12.0.0/docs/src/GHC.Base.html) package of Haskell.
 
 This is my take on it. It's a [single file](https://github.com/MaxwellBo/A-tour-of-Scala/blob/master/src/main/scala/Main.scala) designed to be presented in a lecture format, scrolling start to finish. It is _not_ an attempt to teach functional programming^ from the ground up, but to teach developers who might need to briefly contribute to Scala production codebases enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of copy-pastable example code, with little indirection for maximal `Go to definition`-ability. 
 
