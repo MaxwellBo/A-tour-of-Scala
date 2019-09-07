@@ -22,10 +22,10 @@ So far, it has from scratch reimplementations of
 - `Functor`, `Monad` for commonly used types (e.g. `R => ?`, `List`, `Option`)
 - `Monoid` and `Semigroup`
 - A stripped down effect monad (`Sync`)
-- `Kleisli`
+- `State`
+- `Kleisli/ReaderT`
 - `Free`
  
-
 It is _not_ an attempt to teach functional programming from the ground up^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of copy-pastable example code, with little indirection for maximal `Go to definition`-ability. 
 
 Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. I already have stripped down examples of `Free`, and a couple of the standard monad transformers. Maybe lenses? 
