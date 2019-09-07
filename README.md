@@ -14,7 +14,7 @@
 
 Over the last 3 years, there've been times where I've needed to explain various functional concepts as they exist in Scala.  Typically, all that functional goodness is locked up in libraries like [Cats](https://github.com/scalaz/scalaz) and [Scalaz](https://scalaz.github.io/7/). Unfortunately, these libraries are labyrinthine - a tall tower of abstractions, obscured by hacks to improve syntax ergonomics and performance. Their source code is nothing like the quite readable [Base](http://hackage.haskell.org/package/base-4.12.0.0/docs/src/GHC.Base.html) package of Haskell.
 
-This is my take on it. It's a [single file](https://github.com/MaxwellBo/A-tour-of-Scala/blob/master/src/main/scala/Main.scala) designed to be presented in a lecture format, scrolling start to finish. 
+This is my take on Base. It's a [single file](https://github.com/MaxwellBo/A-tour-of-Scala/blob/master/src/main/scala/Main.scala) designed to be presented in a lecture format, scrolling start to finish. 
 
 So far, it has from-scratch, simplistic^^ reimplementations of
 
