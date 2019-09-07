@@ -27,11 +27,10 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   def makeSound(animal: Animal): Unit = {
-
     println(animal.sound)
   }
 
-  //  makeSound(Cat())
+//    makeSound(Cat())
   //  makeSound(Dog())
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -44,7 +43,7 @@ object Main extends App {
 
   import ThirdPartyLibrary.Rabbit
 
-  // makeSound(Rabbit())
+//   makeSound(Rabbit())
 
   ///////////////////////////////////////////////////////////////////////////////
   // Pattern matching = Type recognition + destructuring
@@ -61,7 +60,23 @@ object Main extends App {
     case Dog() => "Saw a dog"
   }
 
-//  println(result)
+  //  println(result)
+
+//  val Pattern = r"([a-cA-C])"
+//
+//    def matchExample(x: AnyVal): Unit = {
+//      x match {
+//        case i: Int     => "Matching on type"
+//        case 1          => "Matching on a literal"
+//        case 2 | 3      => "Matching on multiple literals"
+//        case x if 0 until 10 contains x => "Matching with guard"
+//        case ab@(a, b)  => "Matching and destructuring a tuple, but keeping the original tuple bound to ab"
+//        case x::xs      => "Matching and destructuring a list"
+//        case Pattern(c) => "c bound to capture group here (if x were a string). This will fail if the Regex doesn't match"
+//        case _          => "Matching wildcard"
+//      }
+//    }
+
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function calling semantic oddities
@@ -89,7 +104,7 @@ object Main extends App {
   def noParameterList = println("I'm a function that has no paramater list")
 
   // noParameterList
-  // noParameterList
+//   noParameterList
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicits
@@ -97,9 +112,9 @@ object Main extends App {
 
   implicit val implicitString: String = "implicit String"
 
-  def implicitString()(implicit x: String) = x
+  def getsImplicitString()(implicit x: String) = x
 
-  // println(implicitString()) // implicit String
+//   println(getsImplicitString()) // implicit String
 
   ///////////////////////////////////////////////////////////////////////////////
   // A sensible usecase for implicits
@@ -122,7 +137,7 @@ object Main extends App {
     serviceLayer()
   }
 
-  //  controller()
+//  controller()
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicit resolution is type directed!
@@ -234,7 +249,7 @@ object Main extends App {
 
   //  makeSoundImplicitParam(Dog())
   //  makeSoundImplicitParam(Cat())
-  //  makeSoundImplicitParam(Rabbit()) // this now works!
+//    makeSoundImplicitParam(Rabbit()) // this now works!
 
   def makeSoundGenericRequirement[A: Sound](a: A): Unit = {
     // val instance = implicitly[Sound[A]] // we can still recover the instance
@@ -1065,6 +1080,17 @@ object Main extends App {
     }
   }
 
+  import Monoid.Instances._
+
+//  println(Monoid.mconcat(List(1, 2, 3)))
+
+//  println(Monoid.mconcat(
+//    List(
+//      Map("hello" -> "world"),
+//      Map("my name" -> "is Max"),
+//    ))
+//  )
+
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monoid
   ///////////////////////////////////////////////////////////////////////////////
@@ -1128,14 +1154,32 @@ object Main extends App {
     }
   }
 
-  println(Monoid.mconcatMap(program)(prodInterpreter))
-  println(Monoid.mconcatMap(program)(testInterpreter))
+//  println(Monoid.mconcatMap(program)(prodInterpreter))
+//  println(Monoid.mconcatMap(program)(testInterpreter))
 
   // 🤔
   def appendFile(filename: String, contents: String): List[FileOp] = {
     val oldContents = readFile(filename)
     deleteFile(filename) <> writeFile(filename, oldContents + contents)
   }
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait LinkedList[+A] { self =>
+    def map[B](f: A => B): LinkedList[B] = {
+      self match {
+        case Link(head, tail) => Link(f(head), tail.map(f))
+        case End => End
+      }
+    }
+  }
+
+  case class Link[+A](head: A, tail: LinkedList[A]) extends LinkedList[A]
+  case object End extends LinkedList[Nothing]
+
+  val ll = Link(1, Link(2, Link(3, End)))
+
+//  println(ll.map(_ + 1))
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monad
@@ -1242,8 +1286,7 @@ object Main extends App {
   }
 
   val effect: Sync[Unit] = programM.foldMap(prodInterpreterM)
-
-  effect.unsafeInterpret()
+//  effect.unsafeInterpret()
 
   type TestState = Map[String, String]
   type TestResult[A] = State[TestState, A]
@@ -1253,7 +1296,7 @@ object Main extends App {
       fa match {
         case WriteFileM(filename, contents) =>
           State.modify[TestState] { s: TestState =>
-            s.+(filename, contents)
+            s.+((filename, contents))
           }
         case ReadFileM(filename) =>
           State.get[TestState]().map { s =>
@@ -1261,7 +1304,7 @@ object Main extends App {
           }
         case DeleteFileM(filename) =>
           State.modify[TestState] { s: TestState =>
-            s.view.filterKeys(_ != filename)
+            s.view.filterKeys(_ != filename).toMap
           }
       }
   }
@@ -1269,7 +1312,7 @@ object Main extends App {
   val mockEffect: State[Map[String, String], Unit] =
     programM.foldMap(testInterpreterM)
 
-  println(mockEffect.run(Map.empty))
+//  println(mockEffect.run(Map.empty))
 
   ///////////////////////////////////////////////////////////////////////////////
   // Why is it called the Free Monad
