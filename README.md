@@ -28,9 +28,14 @@ So far, it has from scratch reimplementations of
  
 It is _not_ an attempt to teach functional programming from the ground up^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of copy-pastable example code, with little indirection for maximal `Go to definition`-ability. 
 
-Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. I already have stripped down examples of `Free`, and a couple of the standard monad transformers. Lenses? Parsers? A proper JSON implementation? A proper HTTP router? More monad transformers?
 
-^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/) or the [QFPL Applied Functional Programming course](https://github.com/qfpl/applied-fp-course). 
+
+^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/) or the [QFPL Applied Functional Programming course](https://github.com/qfpl/applied-fp-course).
+
+
+## Contributing
+
+Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. I already have stripped down examples of `Free`, and a couple of the standard monad transformers. Lenses? Parsers? A proper JSON implementation? A proper HTTP router? More monad transformers?
 
 
 ## Running
