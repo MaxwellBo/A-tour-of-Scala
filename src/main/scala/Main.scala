@@ -1042,28 +1042,28 @@ object Main extends App {
   trait Monoid[A] {
     implicit def semigroupInstance: Semigroup[A]
 
-    def identity: A
+    def mempty: A
   }
 
   object Monoid {
     object Syntax {
-      def identity[M](implicit instance: Monoid[M]): M = instance.identity
+      def mempty[M](implicit instance: Monoid[M]): M = instance.mempty
     }
 
     object Instances {
       implicit def listMonoidInstance[A]: Monoid[List[A]] = new Monoid[List[A]] {
         override def semigroupInstance: Semigroup[List[A]] = Semigroup.Instances.listSemigroupInstance
-        override def identity: List[A] = List.empty
+        override def mempty: List[A] = List.empty
       }
 
       implicit def sumMonoidInstance: Monoid[Int] = new Monoid[Int] {
         override def semigroupInstance: Semigroup[Int] = Semigroup.Instances.sumSemigroupInstance
-        override def identity: Int = 0
+        override def mempty: Int = 0
       }
 
       implicit def mapRightBiasMonoidInstance[K, V]: Monoid[Map[K, V]] = new Monoid[Map[K, V]] {
         override def semigroupInstance: Semigroup[Map[K, V]] = Semigroup.Instances.mapRightBiasSemigroupInstance
-        override def identity: Map[K, V] = Map.empty
+        override def mempty: Map[K, V] = Map.empty
       }
     }
 
@@ -1072,7 +1072,7 @@ object Main extends App {
 
     def mconcat[M: Monoid](xs: List[M]): M = {
       implicit val semigroupInstance: Semigroup[M] = implicitly[Monoid[M]].semigroupInstance
-      xs.foldRight(identity)(_ <> _)
+      xs.foldRight(mempty)(_ <> _)
     }
 
     def mconcatMap[M: Monoid, G](xs: List[G])(f: G => M): M = {
@@ -1081,15 +1081,22 @@ object Main extends App {
   }
 
   import Monoid.Instances._
+  import Semigroup.Instances._
+  import Semigroup.Syntax._
 
-//  println(Monoid.mconcat(List(1, 2, 3)))
+  println(1 <> implicitly[Monoid[Int]].mempty) // 1
+  println(implicitly[Monoid[Int]].mempty <> 1) // 1
+  println(1 <> 2) // 3
 
-//  println(Monoid.mconcat(
-//    List(
-//      Map("hello" -> "world"),
-//      Map("my name" -> "is Max"),
-//    ))
-//  )
+
+  println(Monoid.mconcat(List(1, 2, 3))) // 6
+
+  println(Monoid.mconcat(
+    List(
+      Map("hello" -> "world"),
+      Map("my name" -> "is Max"),
+    ))
+  ) // Map(hello -> world, my name -> is Max)
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monoid
