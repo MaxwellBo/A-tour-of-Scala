@@ -810,6 +810,71 @@ object Main extends App {
   //
   //   println(doTransforms(0)) // (1, "0", true)
 
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // State - where we're going, we don't need variables
+  ///////////////////////////////////////////////////////////////////////////////
+
+  final case class State[S, A](run: S => (S, A))
+
+  object State {
+    object Instances {
+      implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new Functor[State[S, ?]] {
+        def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
+          State(s => {
+            val (sp, a) = fa.run(s) // unwrap
+            (sp, f(a)) // apply
+          }) // rewrap
+      }
+
+      implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
+        def functorInstance: Functor[State[S, ?]] = stateFunctorInstance
+
+        def pure[A](a: A): State[S, A] =
+          State(s => (s, a))
+
+        override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] =
+          State(s => {
+            val (sp, a) = fa.run(s) // unwrap
+            val fb: State[S, B] = f(a) // apply
+            fb.run(sp) // unwrap
+          }) // rewrap
+      }
+    }
+
+    def get[S](): State[S, S] =
+      State(s => (s, s))
+
+    def put[S](n: S): State[S, Unit] =
+      State(s => (n, ()))
+
+    def modify[S](f: S => S): State[S, Unit] =
+      State(s => (f(s), ()))
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // State - usage
+  ///////////////////////////////////////////////////////////////////////////////
+
+  import State.Instances._
+
+  val computation: State[Int, String] = for {
+    _ <- State.modify[Int](_ + 1)
+    _ <- State.put[Int](10)
+    _ <- State.modify[Int](_ - 2)
+    last <- State.get[Int]()
+  } yield s"The final value is $last"
+
+  // where 0 is the initial value
+  //  println(computation.run(0)) // What's the final value?
+
+  //val computationTake2 = State.put(5)
+  //      .flatMap(_ => State.get())
+  //      .map(x => x + 1)
+
+  //  println(computationTake2.run(0)) // what's the final value?
+
+
   ///////////////////////////////////////////////////////////////////////////////
   //  Does composition always work?
   ///////////////////////////////////////////////////////////////////////////////
@@ -928,69 +993,6 @@ object Main extends App {
   //  ))) // None
 
   type ReaderT[F[_], A, B] = Kleisli[F, A, B]
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // State - where we're going, we don't need variables
-  ///////////////////////////////////////////////////////////////////////////////
-
-  final case class State[S, A](run: S => (S, A))
-
-  object State {
-    object Instances {
-      implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new Functor[State[S, ?]] {
-        def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
-          State(s => {
-            val (sp, a) = fa.run(s) // unwrap
-            (sp, f(a)) // apply
-          }) // rewrap
-      }
-
-      implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
-        def functorInstance: Functor[State[S, ?]] = stateFunctorInstance
-
-        def pure[A](a: A): State[S, A] =
-          State(s => (s, a))
-
-        override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] =
-          State(s => {
-            val (sp, a) = fa.run(s) // unwrap
-            val fb: State[S, B] = f(a) // apply
-            fb.run(sp) // unwrap
-          }) // rewrap
-      }
-    }
-
-    def get[S](): State[S, S] =
-      State(s => (s, s))
-
-    def put[S](n: S): State[S, Unit] =
-      State(s => (n, ()))
-
-    def modify[S](f: S => S): State[S, Unit] =
-      State(s => (f(s), ()))
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // State - usage
-  ///////////////////////////////////////////////////////////////////////////////
-
-  import State.Instances._
-
-  val computation: State[Int, String] = for {
-    _ <- State.modify[Int](_ + 1)
-    _ <- State.put[Int](10)
-    _ <- State.modify[Int](_ - 2)
-    last <- State.get[Int]()
-  } yield s"The final value is $last"
-
-  // where 0 is the initial value
-  //  println(computation.run(0)) // (8, The final value is 8)
-
-//val computationTake2 = State.put(5)
-//      .flatMap(_ => State.get())
-//      .map(x => x + 1)
-
-//  println(computationTake2.run(0)) // what's the final value?
 
   ///////////////////////////////////////////////////////////////////////////////
   // Semigroups and Monoids
