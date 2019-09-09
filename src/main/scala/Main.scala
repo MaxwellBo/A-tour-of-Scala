@@ -109,6 +109,8 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
   // Implicits
   ///////////////////////////////////////////////////////////////////////////////
+  // Read the first four paragraphs (and stop):
+  // https://dotty.epfl.ch/docs/reference/contextual/motivation.html
 
   implicit val implicitString: String = "implicit String"
 
