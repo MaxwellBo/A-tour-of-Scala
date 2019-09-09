@@ -959,9 +959,16 @@ object Main extends App {
       .andThen(Kleisli(parseJwtToken))
       .run
 
-  def isAdmin: HttpRequest => Option[Boolean] =
+  def isAdminJwt(jwt: JwtToken): Option[Unit] = {
+    if (jwt.claims.contains("Admin"))
+      Some(())
+    else
+      None
+  }
+
+  def isAdmin: HttpRequest => Option[Unit] =
     Kleisli(extractJWT())
-      .map(_.claims.contains("Admin"))
+      .andThen(Kleisli(isAdminJwt))
       .run
 
   def postHandler: Kleisli[Option, HttpRequest, HttpResponse] = for {
@@ -970,21 +977,21 @@ object Main extends App {
     body <- Kleisli(extractBody)
   } yield HttpResponse(Some(body))
 
-  //  println(echoController.run(
+  //  println(postHandler.run(
   //    HttpRequest(
   //      "POST",
   //      Map("Authorisation" -> "Admin"),
   //      Some("Hello world")
   //  ))) // Some(HttpResponse("Hello world"))
 
-  //  println(echoController.run(
+  //  println(postHandler.run(
   //    HttpRequest(
   //      "POST",
   //      Map("Authorisation" -> "Not Admin"),
   //      Some("Hello world")
   //  ))) // None
 
-  //  println(echoController.run(
+  //  println(postHandler.run(
   //    HttpRequest(
   //      "GET",
   //      Map("Authorisation" -> "Admin"),
