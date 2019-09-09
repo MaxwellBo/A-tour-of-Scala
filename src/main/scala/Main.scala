@@ -731,13 +731,13 @@ object Main extends App {
   //   echo.unsafeInterpret()
   //   echo.unsafeInterpret()
 
-  // is equivalent equivalent to
-  //   putStrLn("Please enter something to be echoed:")
-  //     .flatMap(_ => getStrLn
-  //       .flatMap(str =>
-  //         putStrLn("Echoing: " + str)
-  //     )
-  //   )
+  // is equivalent to
+//     putStrLn("Please enter something to be echoed:")
+//       .flatMap(_ => getStrLn
+//         .flatMap(str =>
+//           putStrLn("Echoing: " + str)
+//             .map(_ => ()
+//           )))
 
   ///////////////////////////////////////////////////////////////////////////////
   // Function composition
@@ -866,14 +866,13 @@ object Main extends App {
   } yield s"The final value is $last"
 
   // where 0 is the initial value
-  //  println(computation.run(0)) // What's the final value?
+  // println(computation.run(0)) // What's the final value?
 
   //val computationTake2 = State.put(5)
   //      .flatMap(_ => State.get())
   //      .map(x => x + 1)
 
-  //  println(computationTake2.run(0)) // what's the final value?
-
+  // println(computationTake2.run(0)) // What's the final value?
 
   ///////////////////////////////////////////////////////////////////////////////
   //  Does composition always work?
@@ -995,6 +994,16 @@ object Main extends App {
   type ReaderT[F[_], A, B] = Kleisli[F, A, B]
 
   ///////////////////////////////////////////////////////////////////////////////
+
+  val friendlyEcho: Kleisli[Sync, String, Unit] = for {
+    _ <- Kleisli((name: String) => putStrLn(s"Hello $name! Please enter something to be echoed:"))
+    str <- Kleisli((_: String) => getStrLn)
+    _ <- Kleisli((name: String) => putStrLn("Echoing: " + str + s". Have a nice day $name!"))
+  } yield ()
+
+//  friendlyEcho.run("Max").unsafeInterpret()
+
+  ///////////////////////////////////////////////////////////////////////////////
   // Semigroups and Monoids
   ///////////////////////////////////////////////////////////////////////////////
   // DOCUMENTATION:
@@ -1088,19 +1097,18 @@ object Main extends App {
   import Semigroup.Instances._
   import Semigroup.Syntax._
 
-  println(1 <> implicitly[Monoid[Int]].mempty) // 1
-  println(implicitly[Monoid[Int]].mempty <> 1) // 1
-  println(1 <> 2) // 3
+//  println(1 <> implicitly[Monoid[Int]].mempty) // 1
+//  println(implicitly[Monoid[Int]].mempty <> 1) // 1
+//  println(1 <> 2) // 3
 
+//  println(Monoid.mconcat(List(1, 2, 3))) // 6
 
-  println(Monoid.mconcat(List(1, 2, 3))) // 6
-
-  println(Monoid.mconcat(
-    List(
-      Map("hello" -> "world"),
-      Map("my name" -> "is Max"),
-    ))
-  ) // Map(hello -> world, my name -> is Max)
+//  println(Monoid.mconcat(
+//    List(
+//      Map("hello" -> "world"),
+//      Map("my name" -> "is Max"),
+//    ))
+//  ) // Map(hello -> world, my name -> is Max)
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monoid
