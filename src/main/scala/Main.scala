@@ -1304,9 +1304,6 @@ object Main extends App {
       }
   }
 
-  val effect: Sync[Unit] = programM.foldMap(prodInterpreterM)
-//  effect.unsafeInterpret()
-
   type TestState = Map[String, String]
   type TestResult[A] = State[TestState, A]
 
@@ -1328,10 +1325,8 @@ object Main extends App {
       }
   }
 
-  val mockEffect: State[Map[String, String], Unit] =
-    programM.foldMap(testInterpreterM)
-
-//  println(mockEffect.run(Map.empty))
+  programM.foldMap(prodInterpreterM).unsafeInterpret()
+  programM.foldMap(testInterpreterM).run(Map.empty)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Why is it called the Free Monad
