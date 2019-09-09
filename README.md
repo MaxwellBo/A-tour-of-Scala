@@ -26,7 +26,7 @@ So far, it has from-scratch, simplistic^ reimplementations of
 - `Kleisli/ReaderT`
 - `Free`
  
-It is _not_ an attempt to teach functional programming from the ground up^^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of copy-pastable example code, with little indirection for maximal `Go to definition`-ability. 
+It is _not_ an attempt to teach functional programming from the ground up^^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of example code and demos, where all abstractions can be copy-pasted into the snippet or Gist after a couple `Go to definition`s.
 
 
 ^ I've had to make some things simpler at the cost of expressiveness. An example includes `Monad` not extending `Functor`, but requiring `Functor` as a `implicit def`. This isn't the "correct" way to do things. 
