@@ -36,6 +36,7 @@ So far, it has from-scratch, simplistic^ reimplementations of
 - [Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
 - [Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
 
+---
  
 This project is _not_ an attempt to teach functional programming from the ground up^^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of example code and demos, where all abstractions can be copy-pasted into the snippet or Gist after a couple `Go to definition`s.
 
