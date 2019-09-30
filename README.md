@@ -44,10 +44,16 @@ This project is _not_ an attempt to teach functional programming from the ground
 
 ^^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/), or the QFPL [Functional Programming](https://github.com/data61/fp-course) + [Applied Functional Programming](https://github.com/qfpl/applied-fp-course) courses.
 
+## What's next?
+
+- Lenses
+- Parser combinators
+- More monad transformers
+- Free applicatives
 
 ## Contributing
 
-Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. I already have stripped down examples of `Free`, and a couple of the standard monad transformers. Lenses? Parsers? A proper JSON implementation? A proper HTTP router? More monad transformers?
+Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. A proper JSON implementation? A proper HTTP router? It's up to you!
 
 
 ## Running
