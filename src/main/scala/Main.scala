@@ -62,7 +62,7 @@ object Main extends App {
 
   //  println(result)
 
-//  val Pattern = r"([a-cA-C])"
+//  val Pattern = "([a-cA-C])".r
 //
 //    def matchExample(x: AnyVal): Unit = {
 //      x match {
