@@ -62,21 +62,20 @@ object Main extends App {
 
   //  println(result)
 
-  //  val Pattern = r"([a-cA-C])"
-  //
-  //    def matchExample(x: AnyVal): Unit = {
-  //      x match {
-  //        case i: Int     => "Matching on type"
-  //        case 1          => "Matching on a literal"
-  //        case 2 | 3      => "Matching on multiple literals"
-  //        case x if 0 until 10 contains x => "Matching with guard"
-  //        case ab@(a, b)  => "Matching and destructuring a tuple, but keeping the original tuple bound to ab"
-  //        case x::xs      => "Matching and destructuring a list"
-  //        case Pattern(c) => "c bound to capture group here (if x were a string). This will fail if the Regex doesn't match"
-  //        case _          => "Matching wildcard"
-  //      }
-  //    }
-
+//  val Pattern = "([a-cA-C])".r
+//
+//    def matchExample(x: AnyVal): Unit = {
+//      x match {
+//        case i: Int     => "Matching on type"
+//        case 1          => "Matching on a literal"
+//        case 2 | 3      => "Matching on multiple literals"
+//        case x if 0 until 10 contains x => "Matching with guard"
+//        case ab@(a, b)  => "Matching and destructuring a tuple, but keeping the original tuple bound to ab"
+//        case x::xs      => "Matching and destructuring a list"
+//        case Pattern(c) => "c bound to capture group here (if x were a string). This will fail if the Regex doesn't match"
+//        case _          => "Matching wildcard"
+//      }
+//    }
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function calling semantic oddities
