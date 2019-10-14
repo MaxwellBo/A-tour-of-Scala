@@ -346,7 +346,7 @@ object Main extends App {
 
   case class Person(name: String, age: Int, alive: Boolean)
 
-  // Note the gap between `Person` and `Encode[Person`
+  // Note the gap between `Person` and `Encode[Person]`
 
   implicit def encodePerson: Encode[Person] = new Encode[Person] {
     def encode(person: Person): Json =
@@ -1220,8 +1220,7 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait LinkedList[+A] {
-    self =>
+  sealed trait LinkedList[+A] { self =>
     def map[B](f: A => B): LinkedList[B] = {
       self match {
         case Link(head, tail) => Link(f(head), tail.map(f))
@@ -1245,8 +1244,7 @@ object Main extends App {
 
   type ~>[F[_], G[_]] = NaturalTransformation[F, G]
 
-  trait NaturalTransformation[F[_], G[_]] {
-    self =>
+  trait NaturalTransformation[F[_], G[_]] { self =>
     def apply[A](fa: F[A]): G[A]
   }
 
@@ -1446,14 +1444,10 @@ object Main extends App {
   import Applicative.Instances._
 
   def sumAgeOfPersonAndParentsA(member: FamilyMember): Option[Int] = {
+    val addAges=
+      (mother: FamilyMember) => (father: FamilyMember) => mother.age + father.age
 
-    val mother: Option[FamilyMember] = member.mother
-    val father: Option[FamilyMember] = member.father
-
-
-    val add = (x: Int) => (y: Int) => x + y
-
-    mother.map(add).ap(father)
+    member.mother.map(addAges).ap(member.father)
   }
 
   object ApplicativeUtils {
@@ -1467,3 +1461,4 @@ object Main extends App {
     }
   }
 }
+
