@@ -226,7 +226,7 @@ object Main extends App {
     object Syntax {
 
       implicit class CanMakeSoundIdExtensions[A](private val self: A) extends AnyVal {
-        def sound_()(implicit instance: Sound[A]): String = {
+        def sound()(implicit instance: Sound[A]): String = {
           instance.sound(self)
         }
       }
@@ -234,19 +234,22 @@ object Main extends App {
     }
 
     object Instances {
-      implicit val dogInstance: Sound[Dog] = new Sound[Dog] {
+      trait SoundDog extends Sound[Dog] {
         override def sound(a: Dog): String = "woof"
       }
 
-      implicit val catInstance: Sound[Cat] = new Sound[Cat] {
+      trait SoundCat extends Sound[Cat] {
         override def sound(a: Cat): String = "meow"
       }
 
-      implicit val rabbitInstance: Sound[Rabbit] = new Sound[Rabbit] {
+      trait SoundRabbit extends Sound[Rabbit] {
         override def sound(a: Rabbit): String = "what the fuck sound does a rabbit make lmao"
       }
-    }
 
+      implicit val dogInstance: Sound[Dog] = new SoundDog {}
+      implicit val catInstance: Sound[Cat] = new SoundCat {}
+      implicit val rabbitInstance: Sound[Rabbit] =  new SoundRabbit {}
+    }
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -257,16 +260,16 @@ object Main extends App {
   import Sound.Syntax._
 
   def makeSoundImplicitParam[A](a: A)(implicit instance: Sound[A]): Unit = {
-    println(a.sound_())
+    println(a.sound())
   }
 
-  //  makeSoundImplicitParam(Dog())
+    makeSoundImplicitParam(Dog())
   //  makeSoundImplicitParam(Cat())
   //    makeSoundImplicitParam(Rabbit()) // this now works!
 
   def makeSoundGenericRequirement[A: Sound](a: A): Unit = {
     // val instance = implicitly[Sound[A]] // we can still recover the instance
-    println(a.sound_())
+    println(a.sound())
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -288,7 +291,7 @@ object Main extends App {
   // println(5.encode().value) // 5
   // println("hello".encode().value) // "hello"
   //
-  //val me = Person(name="Max Bo", age=22, alive=true)
+  val me = Person(name="Max Bo", age=22, alive=true)
 
   // println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
 
@@ -316,19 +319,19 @@ object Main extends App {
     }
 
     object Instances {
-      implicit val encodeString: Encode[String] = new Encode[String] {
+      trait EncodeString extends Encode[String] {
         override def encode(x: String) = Json("\"" + x.toString() + "\"")
       }
 
-      implicit val encodeInt: Encode[Int] = new Encode[Int] {
+      trait EncodeInt extends Encode[Int] {
         override def encode(x: Int) = Json(x.toString())
       }
 
-      implicit val encodeBoolean: Encode[Boolean] = new Encode[Boolean] {
+      trait EncodeBoolean extends Encode[Boolean] {
         override def encode(x: Boolean) = Json(x.toString())
       }
 
-      implicit def encodeMap[A, B]: Encode[Map[String, Json]] = new Encode[Map[String, Json]] {
+      trait EncodeMap extends Encode[Map[String, Json]] {
         override def encode(kv: Map[String, Json]) = {
           val inner =
             kv
@@ -340,8 +343,15 @@ object Main extends App {
           Json(outer)
         }
       }
-    }
 
+      implicit val encodeString: Encode[String] = new EncodeString {}
+
+      implicit val encodeInt: Encode[Int] = new EncodeInt {}
+
+      implicit val encodeBoolean: Encode[Boolean] = new EncodeBoolean {}
+
+      implicit val encodeMap: Encode[Map[String, Json]] = new EncodeMap {}
+    }
   }
 
 
@@ -355,18 +365,22 @@ object Main extends App {
   case class Person(name: String, age: Int, alive: Boolean)
 
   // Note the gap between `Person` and `Encode[Person]`
+  object Person {
+    trait EncodePerson extends Encode[Person] {
+      def encode(person: Person): Json =
+      // we can obviously do this in a macro
+        Map(
+          "name" -> person.name.encode(),
+          "age" -> person.age.encode(),
+          "alive" -> person.alive.encode()
+        ).encode()
+    }
 
-  implicit def encodePerson: Encode[Person] = new Encode[Person] {
-    def encode(person: Person): Json =
-    // we can obviously do this in a macro
-      Map(
-        "name" -> person.name.encode(),
-        "age" -> person.age.encode(),
-        "alive" -> person.alive.encode()
-      ).encode()
+    implicit def encodePerson: Encode[Person] = new EncodePerson {}
   }
 
-  // println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+    // implicit serach goes into the companion object
+   println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
   // this now works!
 
   // obviously these do as well
@@ -480,11 +494,12 @@ object Main extends App {
     object Instances {
       // @ List(1, 2, 3).map(x => x + 1)
       // res0: List[Int] = List(2, 3, 4)
-      implicit val listFunctorInstance: Functor[List] = new Functor[List] {
+
+      trait FunctorList extends Functor[List] {
         def map[A, B](fa: List[A])(f: A => B): List[B] = fa.map(f) // very scary reimplementation, let's not do that and use the stdlib
       }
 
-      implicit val optionFunctorInstance: Functor[Option] = new Functor[Option] {
+      trait FunctorOption extends Functor[Option] {
         def map[A, B](fa: Option[A])(f: A => B): Option[B] = fa match {
           // unwrap              apply
           //             rewrap
@@ -492,8 +507,11 @@ object Main extends App {
           case None => None
         }
       }
-    }
 
+      implicit val listFunctorInstance: Functor[List] = new FunctorList {}
+
+      implicit val optionFunctorInstance: Functor[Option] = new FunctorOption {}
+    }
   }
 
 
@@ -576,9 +594,7 @@ object Main extends App {
   // DOCUMENTATION:
   // https://typelevel.org/cats/typeclasses/monad.html
 
-  trait Monad[F[_]] {
-    implicit def functorInstance: Functor[F]
-
+  trait Monad[F[_]] extends Functor[F] { self: Functor[F] =>
     def point[A](a: A): F[A]
 
     // you only have to implement one or the other, as each can be derived from each others impl
@@ -586,7 +602,7 @@ object Main extends App {
       flatMap(ffa)(x => x)
 
     def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B] =
-      flatten(fa.map(f))
+      flatten(fa.map(f)(self))
   }
 
   object Monad {
@@ -594,7 +610,7 @@ object Main extends App {
     object Syntax {
 
       implicit class MonadIdExtensions[A](private val self: A) extends AnyVal {
-        def point[F[_]]()(implicit instance: Monad[F]): F[A] = {
+        def point[F[_]](implicit instance: Monad[F]): F[A] = {
           instance.point(self)
         }
       }
@@ -615,18 +631,14 @@ object Main extends App {
 
 
     object Instances {
-      implicit val listMonadInstance: Monad[List] = new Monad[List] {
-        override implicit def functorInstance: Functor[List] = listFunctorInstance
-
-        def point[A](a: A): List[A] = List(a)
+      trait MonadList extends Monad[List] with FunctorList {
+        override def point[A](a: A): List[A] = List(a)
 
         override def flatten[A](ffa: List[List[A]]): List[A] =
           ffa.flatten
       }
 
-      implicit val optionMonadInstance: Monad[Option] = new Monad[Option] {
-        override implicit def functorInstance: Functor[Option] = optionFunctorInstance
-
+      trait MonadOption extends Monad[Option] with FunctorOption {
         def point[A](a: A): Option[A] = Some(a)
 
         override def flatten[A](ffa: Option[Option[A]]): Option[A] = ffa match {
@@ -635,8 +647,11 @@ object Main extends App {
           case _ => None
         }
       }
-    }
 
+      implicit val optionMonadInstance: Monad[Option] = new MonadOption {}
+
+      implicit val listMonadInstance: Monad[List] = new MonadList {}
+    }
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -715,13 +730,12 @@ object Main extends App {
     def effect[A](eff: => A) = new Sync(() => eff)
 
     object Instances {
-      implicit val ioFunctorInstance: Functor[Sync] = new Functor[Sync] {
+
+      trait FunctorSync extends Functor[Sync] {
         def map[A, B](fa: Sync[A])(f: A => B): Sync[B] = Sync.effect(f(fa.unsafeInterpret()))
       }
 
-      implicit val ioMonadInstance: Monad[Sync] = new Monad[Sync] {
-        override implicit def functorInstance: Functor[Sync] = ioFunctorInstance
-
+      trait MonadSync extends Monad[Sync] with FunctorSync  {
         def point[A](a: A): Sync[A] = Sync.effect(a)
 
         override def flatten[A](ffa: Sync[Sync[A]]): Sync[A] =
@@ -729,8 +743,10 @@ object Main extends App {
         // rewrap
           Sync.effect(ffa.unsafeInterpret().unsafeInterpret())
       }
-    }
 
+      implicit val syncFunctorInstance: Functor[Sync] = new FunctorSync {}
+      implicit val syncMonadInstance: Monad[Sync] = new MonadSync {}
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -780,7 +796,7 @@ object Main extends App {
   // - https://typelevel.org/cats/typeclasses/functor.html
 
   object Function1FunctorInstances {
-    implicit def function1FunctorInstance[R]: Functor[R => ?] = new Functor[R => ?] {
+    trait FunctorFunction1[R] extends Functor[R => ?] {
       def map[A, B](fa: R => A)(f: A => B): R => B = fa.andThen(f)
 
       //       def map[A, B](fa: R => A)(f: A => B): R => B =
@@ -791,6 +807,7 @@ object Main extends App {
       //        } // rewrap
     }
 
+    implicit def function1FunctorInstance[R]: Functor[R => ?] = new FunctorFunction1[R] {}
   }
 
   import Function1FunctorInstances._
@@ -802,9 +819,7 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   object Function1MonadInstances {
-    implicit def function1MonadInstance[R]: Monad[R => ?] = new Monad[R => ?] {
-      override implicit def functorInstance: Functor[R => ?] = function1FunctorInstance
-
+    trait MonadFunction1[R] extends Monad[R => ?] with FunctorFunction1[R] {
       def point[A](a: A): R => A =
         (_: R) => a
 
@@ -815,6 +830,8 @@ object Main extends App {
         b
       } // rewrap
     }
+
+    implicit def function1MonadInstance[R]: Monad[R => ?] = new MonadFunction1[R] {}
   }
 
   import Function1MonadInstances._
@@ -843,7 +860,8 @@ object Main extends App {
   object State {
 
     object Instances {
-      implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new Functor[State[S, ?]] {
+
+      trait FunctorState[S] extends Functor[State[S, ?]] {
         def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
           State(s => {
             val (sp, a) = fa.run(s) // unwrap
@@ -851,9 +869,7 @@ object Main extends App {
           }) // rewrap
       }
 
-      implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new Monad[State[S, ?]] {
-        def functorInstance: Functor[State[S, ?]] = stateFunctorInstance
-
+      trait MonadState[S] extends Monad[State[S, ?]] with FunctorState[S] {
         def point[A](a: A): State[S, A] =
           State(s => (s, a))
 
@@ -864,6 +880,10 @@ object Main extends App {
             fb.run(sp) // unwrap
           }) // rewrap
       }
+
+      implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new FunctorState[S] {}
+
+      implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new MonadState[S] {}
     }
 
     def get[S](): State[S, S] =
@@ -926,14 +946,11 @@ object Main extends App {
     object Instances {
       implicit def kleisliFunctorInstance[F[_] : Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
         def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
-          implicit val functorInstance: Functor[F] = implicitly[Monad[F]].functorInstance
           Kleisli(rfa.run.map(fa => fa.map(f)))
         }
       }
 
       implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
-        override implicit def functorInstance: Functor[Kleisli[F, R, ?]] = kleisliFunctorInstance
-
         def point[A](a: A): Kleisli[F, R, A] =
           Kleisli(a.point[F].point[R => ?])
 
@@ -1062,17 +1079,17 @@ object Main extends App {
     }
 
     object Instances {
-      implicit def listSemigroupInstance[A]: Semigroup[List[A]] = new Semigroup[List[A]] {
+      trait SemigroupList[A] extends Semigroup[List[A]] {
         override def <>(here: List[A])(there: List[A]): List[A] =
           here ++ there
       }
 
-      implicit def sumSemigroupInstance[A]: Semigroup[Int] = new Semigroup[Int] {
+      trait SemigroupSum extends Semigroup[Int] {
         override def <>(here: Int)(there: Int): Int =
           here + there
       }
 
-      implicit def mapRightBiasSemigroupInstance[K, V]: Semigroup[Map[K, V]] = new Semigroup[Map[K, V]] {
+      trait SemigroupRightBiasMap[K, V] extends Semigroup[Map[K, V]] {
         override def <>(here: Map[K, V])(there: Map[K, V]): Map[K, V] = {
           var collector: Map[K, V] = Map.empty
 
@@ -1087,36 +1104,44 @@ object Main extends App {
           collector
         }
       }
+
+      implicit def listSemigroupInstance[A]: Semigroup[List[A]] = new SemigroupList[A] {}
+
+      implicit def sumSemigroupInstance[A]: Semigroup[Int] = new SemigroupSum {}
+
+      implicit def mapRightBiasSemigroupInstance[K, V]: Semigroup[Map[K, V]] = new SemigroupRightBiasMap[K, V] {}
     }
 
   }
 
-  trait Monoid[A] {
-    implicit def semigroupInstance: Semigroup[A]
-
+  trait Monoid[A] extends Semigroup[A] {
     def mempty: A
   }
 
   object Monoid {
 
     object Instances {
-      implicit def listMonoidInstance[A]: Monoid[List[A]] = new Monoid[List[A]] {
-        override def semigroupInstance: Semigroup[List[A]] = Semigroup.Instances.listSemigroupInstance
 
+      import Semigroup.Instances._
+
+      trait MonoidList[A] extends Monoid[List[A]] with SemigroupList[A] {
         override def mempty: List[A] = List.empty
       }
 
-      implicit def sumMonoidInstance: Monoid[Int] = new Monoid[Int] {
-        override def semigroupInstance: Semigroup[Int] = Semigroup.Instances.sumSemigroupInstance
-
+      trait MonoidSum extends Monoid[Int] with SemigroupSum {
         override def mempty: Int = 0
       }
 
-      implicit def mapRightBiasMonoidInstance[K, V]: Monoid[Map[K, V]] = new Monoid[Map[K, V]] {
-        override def semigroupInstance: Semigroup[Map[K, V]] = Semigroup.Instances.mapRightBiasSemigroupInstance
-
+      trait MonoidRightBiasMap[K, V] extends Monoid[Map[K, V]] with SemigroupRightBiasMap[K, V] {
         override def mempty: Map[K, V] = Map.empty
       }
+
+      implicit def listMonoidInstance[A]: Monoid[List[A]] = new MonoidList[A] {}
+
+      implicit def sumMonoidInstance: Monoid[Int] = new MonoidSum {}
+
+      implicit def mapRightBiasMonoidInstance[K, V]: Monoid[Map[K, V]] = new MonoidRightBiasMap[K, V] {}
+
     }
 
     import Semigroup.Syntax._
@@ -1124,7 +1149,6 @@ object Main extends App {
     def mempty[M](implicit instance: Monoid[M]): M = instance.mempty
 
     def mconcat[M: Monoid](xs: List[M]): M = {
-      implicit val semigroupInstance: Semigroup[M] = implicitly[Monoid[M]].semigroupInstance
       xs.foldRight(mempty)(_ <> _)
     }
 
@@ -1134,23 +1158,22 @@ object Main extends App {
   }
 
   import Monoid.Instances._
-  import Semigroup.Instances._
   import Semigroup.Syntax._
 
-  println(1 <> Monoid.mempty[Int]) // 1
-  println(Monoid.mempty[Int] <> 1) // 1
-  println(1 <> 2) // 3
-
-  println(Monoid.mconcat(List(1, 2, 3))) // 6
-
-  println(Map("hello" -> "world") <> Map("my name" -> "is Max")) // // Map(hello -> world, my name -> is Max)
-
-  println(Monoid.mconcat(
-    List(
-      Map("hello" -> "world"),
-      Map("my name" -> "is Max"),
-    ))
-  ) // Map(hello -> world, my name -> is Max)
+//  println(1 <> Monoid.mempty[Int]) // 1
+//  println(Monoid.mempty[Int] <> 1) // 1
+//  println(1 <> 2) // 3
+//
+//  println(Monoid.mconcat(List(1, 2, 3))) // 6
+//
+//  println(Map("hello" -> "world") <> Map("my name" -> "is Max")) // // Map(hello -> world, my name -> is Max)
+//
+//  println(Monoid.mconcat(
+//    List(
+//      Map("hello" -> "world"),
+//      Map("my name" -> "is Max"),
+//    ))
+//  ) // Map(hello -> world, my name -> is Max)
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monoid
@@ -1282,19 +1305,22 @@ object Main extends App {
       Suspend(ga)
 
     object Instances {
-      implicit def freeFunctorInstance[G[_]]: Functor[Free[G, ?]] = new Functor[Free[G, ?]] {
+
+      trait FunctorFree[G[_]] extends Functor[Free[G, ?]] {
         def map[A, B](fa: Free[G, A])(f: A => B): Free[G, B] =
           freeMonadInstance.flatMap(fa)(a => Point(f(a)))
       }
 
-      implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new Monad[Free[G, ?]] {
-        override implicit def functorInstance: Functor[Free[G, ?]] = freeFunctorInstance
-
+      trait MonadFree[G[_]] extends Monad[Free[G, ?]] with FunctorFree[G] {
         def point[A](a: A): Free[G, A] = Point(a)
 
         override def flatMap[A, B](fa: Free[G, A])(f: A => Free[G, B]): Free[G, B] =
           FlatMapped(fa, f)
       }
+
+      implicit def freeFunctorInstance[G[_]]: Functor[Free[G, ?]] = new FunctorFree[G] {}
+
+      implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new MonadFree[G] {}
     }
 
   }
@@ -1390,9 +1416,7 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  trait Applicative[F[_]] {
-    implicit def functorInstance: Functor[F]
-
+  trait Applicative[F[_]] extends Functor[F] { self: Functor[F] =>
     def pure[A](a: A): F[A]
 
     // can define one or the other
@@ -1406,13 +1430,16 @@ object Main extends App {
     // you might want to define `liftA2` because mapping over your `F` might
     // be an expensive operation
     def liftA2[A, B, C](f: A => B => C): F[A] => F[B] => F[C] =
-      (fa: F[A]) => (fb: F[B]) => ap(fa.map(f))(fb)
+      (fa: F[A]) => (fb: F[B]) => ap(fa.map(f)(self))(fb)
   }
 
   object Applicative {
+    def liftA2[F[_], A, B, C](f: A => B => C)(implicit instance: Applicative[F]): F[A] => F[B] => F[C] =
+      instance.liftA2(f)
+
     object Syntax {
       implicit class ApplicativeIdExtensions[A](private val self: A) extends AnyVal {
-        def point[F[_]]()(implicit instance: Applicative[F]): F[A] = {
+        def pure[F[_]](implicit instance: Applicative[F]): F[A] = {
           instance.pure(self)
         }
       }
@@ -1425,18 +1452,17 @@ object Main extends App {
     }
 
     object Instances {
-      implicit val optionApplicative: Applicative[Option] = new Applicative[Option] {
-
-        override def functorInstance: Functor[Option] = Functor.Instances.optionFunctorInstance
-
+      trait ApplicativeOption extends Applicative[Option] with FunctorOption {
         override def pure[A](a: A): Option[A] = Some(a)
 
         override def ap[A, B](ff: Option[A => B])(fa: Option[A]): Option[B] =
           (ff, fa) match {
             case (Some(f), Some(a)) => Some(f(a))
             case _ => None
-        }
+          }
       }
+
+      implicit val optionApplicative: Applicative[Option] = new ApplicativeOption {}
     }
   }
 
@@ -1452,21 +1478,49 @@ object Main extends App {
   import Applicative.Instances._
 
   def sumAgeOfPersonAndParentsA(member: FamilyMember): Option[Int] = {
-    val addAges =
+    val addAges: FamilyMember => FamilyMember => Int =
       (mother: FamilyMember) => (father: FamilyMember) => mother.age + father.age
 
     member.mother.map(addAges).ap(member.father)
   }
 
   object ApplicativeUtils {
-    def deriveAp[F[_]: Monad, A, B]: F[A => B] => F[A] => F[B] = {
-      implicit val functorInstance = implicitly[Monad[F]].functorInstance
+    def derivePure[F[_]: Monad, A](a: A) =
+      a.point[F]
 
-      (ff: F[A => B]) => (fa: F[A]) => for {
+    def deriveAp[F[_]: Monad, A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
           f <- ff
           a <- fa
       } yield f(a)
+  }
+
+
+
+  object MoreSyncInstances {
+    trait ApplicativeSync extends Applicative[Sync] with FunctorSync {
+      override def pure[A](a: A): Sync[A] =
+        ApplicativeUtils.derivePure(a)[Sync]
+
+      // Making this parallel is left as an exercise for the reader
+      override def ap[A, B](ff: Sync[A => B])(fa: Sync[A]): Sync[B] =
+        ApplicativeUtils.deriveAp[Sync, A, B](ff)(fa)
     }
+
+    implicit def syncApplicativeInstance: Applicative[Sync] = new ApplicativeSync {}
+  }
+
+  import MoreSyncInstances._
+
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
+  def sequenceSyncList[A](xs: List[Sync[A]]): Sync[List[A]] = {
+    val collector: Sync[List[A]] = List.empty[A].pure[Sync]
+    def prepend = (x: A) => (xs: List[A]) => xs.prepended(x)
+    def lifted = Applicative.liftA2(prepend)
+
+    xs.foldRight[Sync[List[A]]](collector, )
+
+    xs.foldRight[Sync[List[A]]](collector, Applicative.liftA2(prepend))
+
   }
 }
 
