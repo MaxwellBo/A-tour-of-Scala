@@ -190,6 +190,14 @@ object Main extends App {
   // println(hktAppImplicitly[List, Boolean]) // List(true)
   // println(hktAppImplicitly[Id, String]) // "implicit String"
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // Implicit defs - we can parameterize our implicit recovery
+  ///////////////////////////////////////////////////////////////////////////////
+
+  implicit def emptyOption[A]: Option[A] = None
+
+  println(implicitly[Option[String]])
+  println(implicitly[Option[Boolean]])
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicit classes
@@ -1444,7 +1452,7 @@ object Main extends App {
   import Applicative.Instances._
 
   def sumAgeOfPersonAndParentsA(member: FamilyMember): Option[Int] = {
-    val addAges=
+    val addAges =
       (mother: FamilyMember) => (father: FamilyMember) => mother.age + father.age
 
     member.mother.map(addAges).ap(member.father)
