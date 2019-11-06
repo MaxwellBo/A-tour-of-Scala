@@ -1,10 +1,18 @@
-import java.io.File
+import java.io.{File, PrintWriter}
 
+import scala.concurrent.Future
 import scala.io.Source
 
 object Main extends App {
 
-  // Things may appear in a weird order. I'm doing that so that you know every
+  ///////////////////////////////////////////////////////////////////////////////
+  // PREFACE
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // If you haven't already, go to the README.md. Before we start, some
+  // housekeeping.
+
+  // 1. Things may appear in a weird order. I'm doing that so that you know every
   // thing you need to know before you get to it, so you don't see something
   // weird and think 'what the hell is that'
 
@@ -55,59 +63,119 @@ object Main extends App {
 
   val animal: Animal = Dog()
 
-  val result = animal match { // demo case (exhaustive)
+  val animalMatch = animal match { // demo case (exhaustive)
     case Cat(n) => s"Saw a cat with name $n"
     case Dog() => "Saw a dog"
   }
 
-  //  println(result)
-
-//  val Pattern = "([a-cA-C])".r
-//
-//    def matchExample(x: AnyVal): Unit = {
-//      x match {
-//        case i: Int     => "Matching on type"
-//        case 1          => "Matching on a literal"
-//        case 2 | 3      => "Matching on multiple literals"
-//        case x if 0 until 10 contains x => "Matching with guard"
-//        case ab@(a, b)  => "Matching and destructuring a tuple, but keeping the original tuple bound to ab"
-//        case x::xs      => "Matching and destructuring a list"
-//        case Pattern(c) => "c bound to capture group here (if x were a string). This will fail if the Regex doesn't match"
-//        case _          => "Matching wildcard"
-//      }
-//    }
+  //  println(animalMatch)
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Scala function calling semantic oddities
+
+  val intMatch = 5 match {
+      case 1          => "Matching on a literal"
+      case 2 | 3      => "Matching on multiple literals"
+      case x if 1 until 10 contains x=> s"Matching with guard: caught $x"
+      case i: Int     => s"Matching on type: caught ${x}"
+  }
+  println(intMatch)
+
   ///////////////////////////////////////////////////////////////////////////////
 
-  def add(x: Int, y: Int): Int = x + y
+  val Pattern = "([a-cA-C]+)".r
+
+  val regexMatch = "abcdefg" match {
+    case Pattern(c) => s"The capture group was ${c}"
+    case _          => "Didn't match anything"
+  }
+
+  println(regexMatch)
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val tupleMatch = (1, 2) match {
+    case ab@(a, b)  => s"Matching and destructuring a tuple, but keeping the original tuple bound to ab (${ab})"
+  }
+
+  println(tupleMatch)
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Scala function defintion syntax variants - many ways to skin a cat
+  ///////////////////////////////////////////////////////////////////////////////
+
+  def add(x: Int, y: Int): Int =
+    x + y
+
+  def addBraced(x: Int, y: Int): Int = {
+    val z = 5
+    x + y // returns the last line within the braces
+  }
+
+  val addOuterAnon = (x: Int, y: Int) => {
+    x + y
+  }
+
+  val addInnerAnon = { (x: Int, y: Int) =>
+    x + y
+  }
+
+  val addDetestMyCoworkers = {
+    (_: Int) + (_: Int)
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Currying - applying one parameter at a time
+  ///////////////////////////////////////////////////////////////////////////////
 
   // println(add(3, 5))
 
-  def addCurried(x: Int)(y: Int): Int = x + y
+  def addCurried(x: Int)(y: Int): Int =
+    x + y
 
   // println(addCurried(3)(5))
 
-  val add3: Int => Int = addCurried(3)
+  val addCurriedOuterAnon = (x: Int) => (y: Int) => { // might be familiar to people who've written JS
+    x + y
+  }
+
+  // println(addCurriedOuterAnon(3)(5))
+
+  val add3: Int => Int =
+    addCurried(3)
 
   // println(add3(5))
 
+  val add4: Int => Int =
+    addOuterAnon.curried(4)
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Uncurrying - going back to the ol' fashioned way
   ///////////////////////////////////////////////////////////////////////////////
 
-  def emptyParamterList() = println("I'm a function that has an empty paramater list")
+  val addUncurried = Function.uncurried(addCurriedOuterAnon)
+
+  println(addUncurried(3, 5)) // we can call it normally again!
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // `def` enabling call by name
+  ///////////////////////////////////////////////////////////////////////////////
+
+  def emptyParamterList() =
+    println("I'm a function that has an empty paramater list")
 
   // emptyParamterList()
   // emptyParamterList()
 
-  def noParameterList = println("I'm a function that has no paramater list")
+  def noParameterList =
+    println("I'm a function that has no parameter list")
 
   // noParameterList
-  //   noParameterList
+  // noParameterList
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicits
   ///////////////////////////////////////////////////////////////////////////////
+
   // Read the first four paragraphs (and stop):
   // https://dotty.epfl.ch/docs/reference/contextual/motivation.html
 
@@ -194,24 +262,39 @@ object Main extends App {
   // Implicit defs - we can parameterize our implicit recovery
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit def emptyOption[A]: Option[A] = None
+  implicit def emptyList[A]: List[A] = List()
 
-  println(implicitly[Option[String]])
-  println(implicitly[Option[Boolean]])
+  println(implicitly[List[Cat]]) // List()
+  println(implicitly[List[Dog]]) // List()
+
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Implicit classes
+  // Implicit objects - implicits need not be primatives or class instances
   ///////////////////////////////////////////////////////////////////////////////
 
-  object IntSyntax {
-
-    implicit final class IntExtensions(private val self: Int) extends AnyVal {
-      def increment(): Int = self + 1
-    }
-
+  implicit object StaticCat extends Cat(name = "Static Cat") {
+    override def sound: String = s"static: ${super.sound}"
   }
 
-  import IntSyntax._
+  println(StaticCat.sound) // don't have to construct StaticCat - is global
+
+  println(implicitly[Cat].sound) // static meow
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Implicit classes - classes that auto-wrap themselves around a receiver
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // They have a bunch of weird rules that you should probably read about
+  // https://docs.scala-lang.org/overviews/core/implicit-classes.htmlz
+
+//  object IntSyntax {
+//    implicit final class IntExtensions(private val self: Int) extends AnyVal {
+//      def increment(): Int = self + 1
+//    }
+//
+//  }
+
+//  import IntSyntax._
 
   // println(5.increment()) // 6
 
@@ -530,6 +613,10 @@ object Main extends App {
   // println(getAge(son.mother)) // Some(55)
 
   ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////////
   // Why Functors might not be all we need
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -727,25 +814,66 @@ object Main extends App {
   class Sync[A](val unsafeInterpret: () => A)
 
   object Sync {
-    def effect[A](eff: => A) = new Sync(() => eff)
+    def suspend[A](eff: => A) = new Sync(() => eff)
 
     object Instances {
 
       trait FunctorSync extends Functor[Sync] {
-        def map[A, B](fa: Sync[A])(f: A => B): Sync[B] = Sync.effect(f(fa.unsafeInterpret()))
+        def map[A, B](fa: Sync[A])(f: A => B): Sync[B] = Sync.suspend(f(fa.unsafeInterpret()))
       }
 
       trait MonadSync extends Monad[Sync] with FunctorSync  {
-        def point[A](a: A): Sync[A] = Sync.effect(a)
+        def point[A](a: A): Sync[A] = Sync.suspend(a)
 
         override def flatten[A](ffa: Sync[Sync[A]]): Sync[A] =
         //                      unwrap unwrap
         // rewrap
-          Sync.effect(ffa.unsafeInterpret().unsafeInterpret())
+          Sync.suspend(ffa.unsafeInterpret().unsafeInterpret())
       }
 
       implicit val syncFunctorInstance: Functor[Sync] = new FunctorSync {}
       implicit val syncMonadInstance: Monad[Sync] = new MonadSync {}
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Utilities
+  ///////////////////////////////////////////////////////////////////////////////
+
+  object IO {
+    object Unsafe {
+      def writeFile(filename: String, contents: String): Unit = {
+        new PrintWriter(filename) {
+          write(contents)
+          close()
+        }
+      }
+
+      def readFile(filename: String): String = {
+        val source = Source.fromFile(filename)
+        try source.mkString finally source.close()
+      }
+
+      def deleteFile(filename: String): Unit = {
+        new File(filename).delete()
+      }
+    }
+
+    object Safe {
+      def putStrLn(line: String): Sync[Unit] =
+        Sync.suspend(println(line))
+
+      def getStrLn(): Sync[String] =
+        Sync.suspend(scala.io.StdIn.readLine())
+
+      def writeFile(filename: String, contents: String): Sync[Unit] =
+        Sync.suspend(IO.Unsafe.writeFile(filename, contents))
+
+      def readFile(filename: String): Sync[String] =
+        Sync.suspend(IO.Unsafe.readFile(filename))
+
+      def deleteFile(filename: String): Sync[Unit] =
+        Sync.suspend(IO.Unsafe.deleteFile(filename))
     }
   }
 
@@ -755,28 +883,36 @@ object Main extends App {
 
   import Sync.Instances._
 
-  def putStrLn(line: String): Sync[Unit] =
-    Sync.effect(println(line))
-
-  val getStrLn: Sync[String] =
-    Sync.effect(scala.io.StdIn.readLine())
-
   val echo: Sync[Unit] = for {
-    _ <- putStrLn("Please enter something to be echoed:")
-    str <- getStrLn
-    _ <- putStrLn("Echoing: " + str)
+    _ <- IO.Safe.putStrLn("Please enter something to be echoed:")
+    str <- IO.Safe.getStrLn()
+    _ <- IO.Safe.putStrLn("Echoing: " + str)
   } yield ()
 
   //   echo.unsafeInterpret()
   //   echo.unsafeInterpret()
 
   // is equivalent to
-  //     putStrLn("Please enter something to be echoed:")
-  //       .flatMap(_ => getStrLn
+  //     IO.Safe.putStrLn("Please enter something to be echoed:")
+  //       .flatMap(_ => IO.Safe.getStrLn()
   //         .flatMap(str =>
-  //           putStrLn("Echoing: " + str)
+  //           IO.Safe.putStrLn("Echoing: " + str)
   //             .map(_ => ()
   //           )))
+
+  def copy(from: String, to: String): Sync[Unit] = for {
+    contents <- IO.Safe.readFile(from)
+    _ <- IO.Safe.writeFile(to, contents)
+  } yield ()
+
+  // is equivalent to
+//       IO.Safe.readFile(contents)
+//         .flatMap(contents => IO.Safe.writeFile(to, contents)
+//            .map(_ => ())
+//         )
+
+  copy("a.txt", "b.txt") // won't do anything
+  copy("a.txt", "b.txt").unsafeInterpret() // will actually do stuff
 
   ///////////////////////////////////////////////////////////////////////////////
   // Function composition
@@ -933,6 +1069,10 @@ object Main extends App {
   //    getMother.map(grandmother => grandmother.age)
 
   ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+  ///////////////////////////////////////////////////////////////////////////////
   // Kleisli - I'm really sorry
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -951,6 +1091,11 @@ object Main extends App {
       }
 
       implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
+        // Have to duplicate :(
+        def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
+          Kleisli(rfa.run.map(fa => fa.map(f)))
+        }
+
         def point[A](a: A): Kleisli[F, R, A] =
           Kleisli(a.point[F].point[R => ?])
 
@@ -1048,9 +1193,9 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   val friendlyEcho: Kleisli[Sync, String, Unit] = for {
-    _ <- Kleisli((name: String) => putStrLn(s"Hello $name! Please enter something to be echoed:"))
-    str <- Kleisli((_: String) => getStrLn)
-    _ <- Kleisli((name: String) => putStrLn("Echoing: " + str + s". Have a nice day $name!"))
+    _ <- Kleisli((name: String) => IO.Safe.putStrLn(s"Hello $name! Please enter something to be echoed:"))
+    str <- Kleisli((_: String) => IO.Safe.getStrLn())
+    _ <- Kleisli((name: String) => IO.Safe.putStrLn("Echoing: " + str + s". Have a nice day $name!"))
   } yield ()
 
   //  friendlyEcho.run("Max").unsafeInterpret()
@@ -1187,43 +1332,38 @@ object Main extends App {
 
   case class DeleteFile(filename: String) extends FileOp
 
-  def writeFile(filename: String, contents: String): List[FileOp] =
-    List(WriteFile(filename, contents))
+  object FileOp {
+    def writeFile(filename: String, contents: String): List[FileOp] =
+      List(WriteFile(filename, contents))
 
-  def readFile(name: String): List[FileOp] =
-    List(ReadFile(name))
+    def readFile(name: String): List[FileOp] =
+      List(ReadFile(name))
 
-  def deleteFile(filename: String): List[FileOp] =
-    List(DeleteFile(filename))
+    def deleteFile(filename: String): List[FileOp] =
+      List(DeleteFile(filename))
+  }
+
 
   import Semigroup.Instances._
   import Semigroup.Syntax._
   import Monoid.Instances._
 
   val program: List[FileOp] = {
-    writeFile("a.txt", "a") <>
-      deleteFile("b.txt") <>
-      writeFile("b.txt", "b")
+    FileOp.writeFile("a.txt", "a") <>
+      FileOp.deleteFile("b.txt") <>
+      FileOp.writeFile("b.txt", "b")
   }
 
   import java.io.PrintWriter
 
   def prodInterpreter(op: FileOp): List[Unit] = {
     op match {
-      case WriteFile(filename, contents) => {
-        new PrintWriter(filename) {
-          write(contents)
-          close()
-        }
-      }
-      case ReadFile(filename) => {
-        val source = Source.fromFile(filename)
-        val lines: String = try source.mkString finally source.close()
-        println(lines)
-      }
-      case DeleteFile(filename) => {
-        new File(filename).delete()
-      }
+      case WriteFile(filename, contents) =>
+        IO.Unsafe.writeFile(filename, contents)
+      case ReadFile(filename) =>
+        println(IO.Unsafe.readFile(filename))
+      case DeleteFile(filename) =>
+        IO.Unsafe.deleteFile(filename)
     }
 
     List()
@@ -1245,8 +1385,8 @@ object Main extends App {
 
   // 🤔
   def appendFile(filename: String, contents: String): List[FileOp] = {
-    val oldContents = readFile(filename)
-    deleteFile(filename) <> writeFile(filename, oldContents + contents)
+    val oldContents = FileOp.readFile(filename)
+    FileOp.deleteFile(filename) <> FileOp.writeFile(filename, oldContents + contents)
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1261,7 +1401,6 @@ object Main extends App {
   }
 
   case class Link[+A](head: A, tail: LinkedList[A]) extends LinkedList[A]
-
   case object End extends LinkedList[Nothing]
 
   val ll = Link(1, Link(2, Link(3, End)))
@@ -1283,9 +1422,9 @@ object Main extends App {
     self: Free[G, A] =>
     def foldMap[F[_] : Monad](nt: G ~> F): F[A] = {
       self match {
-        case Point(a) => a.point[F]
-        case Suspend(ga) => nt(ga)
-        case FlatMapped(fa, f) =>
+        case Free.Point(a) => a.point[F]
+        case Free.Suspend(ga) => nt(ga)
+        case Free.FlatMapped(fa, f) =>
           // HERE BE DRAGONS: This is not stack safe - you have to use a
           // "Trampoline" because we can't do TCO polymorphically.
           // DO NOT USE THIS IN PROD
@@ -1294,13 +1433,13 @@ object Main extends App {
     }
   }
 
-  final case class Point[G[_], A](a: A) extends Free[G, A]
-
-  final case class Suspend[G[_], A](ga: G[A]) extends Free[G, A]
-
-  final case class FlatMapped[G[_], A, B](fa: Free[G, A], f: A => Free[G, B]) extends Free[G, B]
-
   object Free {
+    final case class Point[G[_], A](a: A) extends Free[G, A]
+
+    final case class Suspend[G[_], A](ga: G[A]) extends Free[G, A]
+
+    final case class FlatMapped[G[_], A, B](fa: Free[G, A], f: A => Free[G, B]) extends Free[G, B]
+
     def suspend[G[_], A](ga: G[A]): Free[G, A] =
       Suspend(ga)
 
@@ -1322,7 +1461,6 @@ object Main extends App {
 
       implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new MonadFree[G] {}
     }
-
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1331,55 +1469,50 @@ object Main extends App {
 
   sealed trait FileOpM[A]
 
-  case class WriteFileM(filename: String, contents: String) extends FileOpM[Unit]
+  object FileOpM {
+    case class WriteFileM(filename: String, contents: String) extends FileOpM[Unit]
 
-  case class ReadFileM(filename: String) extends FileOpM[String]
+    case class ReadFileM(filename: String) extends FileOpM[String]
 
-  case class DeleteFileM(filename: String) extends FileOpM[Unit]
+    case class DeleteFileM(filename: String) extends FileOpM[Unit]
 
-  def writeFileM(filename: String, contents: String): Free[FileOpM, Unit] =
-    Free.suspend(WriteFileM(filename, contents))
+    def writeFileM(filename: String, contents: String): Free[FileOpM, Unit] =
+      Free.suspend(WriteFileM(filename, contents))
 
-  def readFileM(filename: String): Free[FileOpM, String] =
-    Free.suspend(ReadFileM(filename))
+    def readFileM(filename: String): Free[FileOpM, String] =
+      Free.suspend(ReadFileM(filename))
 
-  def deleteFileM(filename: String): Free[FileOpM, Unit] =
-    Free.suspend(DeleteFileM(filename))
+    def deleteFileM(filename: String): Free[FileOpM, Unit] =
+      Free.suspend(DeleteFileM(filename))
+  }
+
 
   import Free.Instances._
 
   def appendFileM(filename: String, contents: String): Free[FileOpM, Unit] = for {
-    oldContents <- readFileM(filename)
-    _ <- deleteFileM(filename)
-    _ <- writeFileM(filename, oldContents + contents)
+    oldContents <- FileOpM.readFileM(filename)
+    _ <- FileOpM.deleteFileM(filename)
+    _ <- FileOpM.writeFileM(filename, oldContents + contents)
   } yield ()
 
   val programM = for {
-    _ <- writeFileM("aM.txt", "aM")
-    _ <- deleteFileM("aM.txt")
-    _ <- writeFileM("bM.txt", "bM")
+    _ <- FileOpM.writeFileM("aM.txt", "aM")
+    _ <- FileOpM.deleteFileM("aM.txt")
+    _ <- FileOpM.writeFileM("bM.txt", "bM")
     _ <- appendFileM("bM.txt", "cM")
   } yield ()
+
+  import FileOpM._
 
   def prodInterpreterM: FileOpM ~> Sync = new (FileOpM ~> Sync) {
     override def apply[A](fa: FileOpM[A]): Sync[A] =
       fa match {
-        case WriteFileM(filename, contents) => Sync.effect {
-          new PrintWriter(filename) {
-            write(contents)
-            close()
-          }
-          ()
-        }
-        case ReadFileM(filename) => Sync.effect {
-          val source = Source.fromFile(filename)
-          val lines: String = try source.mkString finally source.close()
-          lines
-        }
-        case DeleteFileM(filename) => Sync.effect {
-          new File(filename).delete()
-          ()
-        }
+        case WriteFileM(filename, contents) =>
+          IO.Safe.writeFile(filename, contents)
+        case ReadFileM(filename) =>
+          IO.Safe.readFile(filename)
+        case DeleteFileM(filename) =>
+          IO.Safe.deleteFile(filename)
       }
   }
 
@@ -1415,6 +1548,74 @@ object Main extends App {
   // def foldMap[F[_]: Monad, G, A](fa: Free[G, A])(nt: G ~> F): F[A] = {
 
   ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // PRESENTER NOTE: Scroll to the Validated section
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  def catM(filenames: List[String]): Sync[String] = {
+    ???
+  }
+
+  def catT(filenames: (String, String)): Sync[String] = {
+    for {
+      one <- IO.Safe.readFile(filenames._1)
+      two <- IO.Safe.readFile(filenames._2)
+    } yield one + two
+  }
+  // see sumAgeOfPersonAndParentsC
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  object MoreSyncInstances {
+    import scala.concurrent._
+    import scala.concurrent.duration._
+
+    trait ApplicativeSync extends Applicative[Sync] with FunctorSync {
+      override def pure[A](a: A): Sync[A] =
+        Applicative.Utils.derivePure(a)(Sync.Instances.syncMonadInstance)[Sync]
+
+      // This is obviously an incredibly dumb way of implementing this,
+      // but I hope you get the gist. We defer to the stdlib to give us a way of running two
+      // computations at once, and once both have resolved, finally running our function
+      override def liftA2[A, B, C](f: A => B => C): Sync[A] => Sync[B] => Sync[C] =
+        (fa: Sync[A]) => (fb: Sync[B]) => Sync.suspend {
+          implicit val context = scala.concurrent.ExecutionContext.global
+
+          val pa: Future[A] = Future {
+            fa.unsafeInterpret()
+          }
+
+          val pb: Future[B] = Future {
+            fb.unsafeInterpret()
+          }
+
+          val a = Await.result(pa, 5.seconds)
+          val b = Await.result(pb, 5.seconds)
+
+          f(a)(b)
+        }
+      }
+
+    implicit def syncApplicativeInstance: Applicative[Sync] = new ApplicativeSync {}
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  import MoreSyncInstances._
+
+  def catA(filenames: (String, String)): Sync[String] = {
+    val one: Sync[String] = IO.Safe.readFile(filenames._1)
+    val two: Sync[String] = IO.Safe.readFile(filenames._2)
+
+    val join = (x: String, y: String) => x + y
+
+    Applicative.liftA2(join.curried)(one)(two)
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
 
   trait Applicative[F[_]] extends Functor[F] { self: Functor[F] =>
     def pure[A](a: A): F[A]
@@ -1434,8 +1635,8 @@ object Main extends App {
   }
 
   object Applicative {
-    def liftA2[F[_], A, B, C](f: A => B => C)(implicit instance: Applicative[F]): F[A] => F[B] => F[C] =
-      instance.liftA2(f)
+    def liftA2[F[_], A, B, C](f: A => B => C)(fa: F[A])(fb: F[B])(implicit instance: Applicative[F]): F[C] =
+      instance.liftA2(f)(fa)(fb)
 
     object Syntax {
       implicit class ApplicativeIdExtensions[A](private val self: A) extends AnyVal {
@@ -1464,7 +1665,118 @@ object Main extends App {
 
       implicit val optionApplicative: Applicative[Option] = new ApplicativeOption {}
     }
+
+    object Utils {
+      def derivePure[F[_]: Monad, A](a: A): F[A] =
+        a.point[F]
+
+      def deriveAp[F[_]: Monad, A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
+        f <- ff
+        a <- fa
+      } yield f(a)
+    }
   }
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait Validated[+E, +A]
+  case class Valid[E, A](value: A) extends Validated[E, A]
+  case class Invalid[E, A](error: E) extends Validated[E, A]
+
+  // HIDE ME
+  object Validated {
+    object Instances {
+      trait FunctorValidated[E] extends Functor[Validated[E, ?]] {
+        override def map[A, B](fa: Validated[E, A])(f: A => B): Validated[E, B] = {
+          fa match {
+            case Valid(v) => Valid(f(v))
+            case Invalid(e) => Invalid(e)
+          }
+        }
+      }
+
+      trait MonadValidated[E] extends Monad[Validated[E, ?]] with FunctorValidated[E] {
+        override def point[A](a: A): Validated[E, A] = Valid(a)
+
+        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
+          fa match {
+            case Valid(v) => f(v)
+            case Invalid(e) => Invalid(e) // [sic]
+          }
+        }
+      }
+
+      implicit def functorValidated[E]: Functor[Validated[E, ?]] = new FunctorValidated[E] {}
+
+      implicit def monadValidated[E]: Monad[Validated[E, ?]] = new MonadValidated[E] {}
+
+      // HIDE ME
+      implicit def applicativeValidated[E: Semigroup]: Applicative[Validated[E, ?]] = new Applicative[Validated[E, ?]] with FunctorValidated[E] {
+        override def pure[A](a: A): Validated[E, A] = Valid(a)
+
+        override def ap[A, B](ff: Validated[E, A => B])(fa: Validated[E, A]): Validated[E, B] =
+          (ff, fa) match {
+            case (Valid(f), Valid(v)) => Valid(f(v))
+            case (Invalid(e), Valid(_)) => Invalid(e)
+            case (Valid(_), Invalid(e)) => Invalid(e)
+            case (Invalid(e), Invalid(ee)) => Invalid(e <> ee)
+          }
+      }
+    }
+  }
+
+  object CredentialValidator {
+    type Error = String
+
+    import Validated.Instances._
+
+    def validateEmail(email: String): Validated[List[Error], String] = {
+      if (email.contains("@")) {
+        Valid(email)
+      } else {
+        Invalid(List(s"Username must be an email"))
+      }
+    }
+
+    def validatePassword(password: String): Validated[List[Error], String] = {
+      if (password.length < 8) {
+        Valid(password)
+      } else {
+        Invalid(List(s"Password was shorter than 8 characters"))
+      }
+    }
+
+    sealed abstract case class UserCredentials(username: String, password: String) {
+    }
+
+    object UserCredentials {
+//      def apply(username: String, password: String): Validated[List[String], UserCredentials] =
+//        for {
+//          username <- validateEmail(username)
+//          password <- validatePassword(password)
+//        } yield new UserCredentials(username = username, password = password) {}
+
+      // HIDE ME
+      def apply(username: String, password: String): Validated[List[String], UserCredentials] = {
+        val mkUserCreds = (username: String, password: String) =>
+          new UserCredentials(username = username, password = password) {}
+
+        Applicative.liftA2(mkUserCreds.curried)(validateEmail(username))(validatePassword(password))
+      }
+    }
+
+    def signup[E](credentials: Valid[E, UserCredentials]): Unit = {
+      println(credentials)
+    }
+
+    CredentialValidator.UserCredentials("Max Bo", "hunter2") match {
+      case v@Valid(_) => signup(v)
+      //    case i@Invalid(_) => signup(i)
+      case Invalid(error) => println(error)
+    }
+  }
+
+    ///////////////////////////////////////////////////////////////////////////////
 
   // Seen in a previous episode
 //  def sumAgeOfPersonAndParentsC(member: FamilyMember): Option[Int] = {
@@ -1478,49 +1790,66 @@ object Main extends App {
   import Applicative.Instances._
 
   def sumAgeOfPersonAndParentsA(member: FamilyMember): Option[Int] = {
-    val addAges: FamilyMember => FamilyMember => Int =
-      (mother: FamilyMember) => (father: FamilyMember) => mother.age + father.age
+    val motherAge = member.mother.map(_.age)
+    val fatherAge = member.father.map(_.age)
 
-    member.mother.map(addAges).ap(member.father)
+    motherAge.map(addOuterAnon.curried).ap(fatherAge)
+    // OR
+    Applicative.liftA2(addOuterAnon.curried)(motherAge)(fatherAge)
   }
 
-  object ApplicativeUtils {
-    def derivePure[F[_]: Monad, A](a: A) =
-      a.point[F]
-
-    def deriveAp[F[_]: Monad, A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
-          f <- ff
-          a <- fa
-      } yield f(a)
-  }
-
-
-
-  object MoreSyncInstances {
-    trait ApplicativeSync extends Applicative[Sync] with FunctorSync {
-      override def pure[A](a: A): Sync[A] =
-        ApplicativeUtils.derivePure(a)[Sync]
-
-      // Making this parallel is left as an exercise for the reader
-      override def ap[A, B](ff: Sync[A => B])(fa: Sync[A]): Sync[B] =
-        ApplicativeUtils.deriveAp[Sync, A, B](ff)(fa)
-    }
-
-    implicit def syncApplicativeInstance: Applicative[Sync] = new ApplicativeSync {}
-  }
+  ///////////////////////////////////////////////////////////////////////////////
+  // After that "brief" interlude, back to running things in parallel
+  ///////////////////////////////////////////////////////////////////////////////
 
   import MoreSyncInstances._
 
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
   def sequenceSyncList[A](xs: List[Sync[A]]): Sync[List[A]] = {
+
     val collector: Sync[List[A]] = List.empty[A].pure[Sync]
-    def prepend = (x: A) => (xs: List[A]) => xs.prepended(x)
-    def lifted = Applicative.liftA2(prepend)
 
-    xs.foldRight[Sync[List[A]]](collector, )
+    def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
+      xs.prepended(x)
 
-    xs.foldRight[Sync[List[A]]](collector, Applicative.liftA2(prepend))
+    def lifted: (Sync[A], Sync[List[A]]) => Sync[List[A]] =
+      Function.uncurried(Applicative.liftA2(prepend))
 
+    xs.foldRight[Sync[List[A]]](collector)(lifted)
   }
+
+  val toPut = List(
+    IO.Safe.putStrLn("hello"),
+    IO.Safe.putStrLn("world")
+  )
+
+  sequenceSyncList(toPut).unsafeInterpret()
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  implicit class ListExtensions[F[_]: Applicative, A](xs: List[F[A]]) {
+    def sequenceAL(): F[List[A]] = {
+      val collector: F[List[A]] = List.empty[A].pure[F]
+      def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
+        xs.prepended(x)
+
+      def lifted: (F[A], F[List[A]]) => F[List[A]] =
+        Function.uncurried(Applicative.liftA2(prepend))
+
+      xs.foldRight[F[List[A]]](collector)(lifted)
+    }
+  }
+
+  toPut.sequenceAL().unsafeInterpret()
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val toSeq: List[Option[Int]] = List(
+    Some(5),
+    None
+  )
+
+  println(toSeq.sequenceAL())
 }
+
 
