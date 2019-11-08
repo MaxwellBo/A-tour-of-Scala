@@ -754,7 +754,7 @@ object Main extends App {
       .flatMap(grandmother => grandmother.mother)
       .map(greatGrandmother => greatGrandmother.age)
     //           ^             ^ multiple successive Monad operations
-    //                           causes _eliminates nesting
+    //                           _eliminates_ nesting
   }
 
   //  println(getGreatGrandMatriarchAgeM(son)) // Some(79)
