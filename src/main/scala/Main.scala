@@ -288,7 +288,7 @@ object Main extends App {
   // https://docs.scala-lang.org/overviews/core/implicit-classes.htmlz
 
 //  object IntSyntax {
-//    implicit final class IntExtensions(private val self: Int) extends AnyVal {
+//    implicit class IntExtensions(private val self: Int) extends AnyVal {
 //      def increment(): Int = self + 1
 //    }
 //
@@ -567,7 +567,7 @@ object Main extends App {
 
     object Syntax {
 
-      implicit final class FunctorExtensions[F[_], A](private val self: F[A]) extends AnyVal {
+      implicit class FunctorExtensions[F[_], A](private val self: F[A]) extends AnyVal {
         def map[B](f: A => B)(implicit instance: Functor[F]): F[B] = {
           instance.map(self)(f)
         }
@@ -702,13 +702,13 @@ object Main extends App {
         }
       }
 
-      implicit final class MonadMonadExtensions[F[_], A](private val self: F[F[A]]) extends AnyVal {
+      implicit class MonadMonadExtensions[F[_], A](private val self: F[F[A]]) extends AnyVal {
         def flatten[B](implicit instance: Monad[F]): F[A] = {
           instance.flatten(self)
         }
       }
 
-      implicit final class MonadExtensions[F[_], A](private val self: F[A]) extends AnyVal {
+      implicit class MonadExtensions[F[_], A](private val self: F[A]) extends AnyVal {
         def flatMap[B](f: A => F[B])(implicit instance: Monad[F]): F[B] = {
           instance.flatMap(self)(f)
         }
@@ -1215,7 +1215,7 @@ object Main extends App {
 
     object Syntax {
 
-      implicit class SemigroupIdSyntax[M](here: M) {
+      implicit class SemigroupIdSyntax[M](val here: M) extends AnyVal {
         def <>(there: M)(implicit instance: Semigroup[M]): M = {
           instance.<>(here)(there)
         }
@@ -1645,7 +1645,7 @@ object Main extends App {
         }
       }
 
-      implicit final class ApplicativeExtensions[F[_], A, B](private val self: F[A => B]) extends AnyVal {
+      implicit class ApplicativeExtensions[F[_], A, B](private val self: F[A => B]) extends AnyVal {
         def ap(fa: F[A])(implicit instance: Applicative[F]): F[B] = {
           instance.ap(self)(fa)
         }
