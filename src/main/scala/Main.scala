@@ -73,10 +73,10 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   val intMatch = 5 match {
-      case 1          => "Matching on a literal"
-      case 2 | 3      => "Matching on multiple literals"
-      case x if 1 until 10 contains x=> s"Matching with guard: caught $x"
-      case i: Int     => s"Matching on type: caught ${x}"
+    case 1 => "Matching on a literal"
+    case 2 | 3 => "Matching on multiple literals"
+    case x if 1 until 10 contains x => s"Matching with guard: caught $x"
+    case i: Int => s"Matching on type: caught ${x}"
   }
   println(intMatch)
 
@@ -86,7 +86,7 @@ object Main extends App {
 
   val regexMatch = "abcdefg" match {
     case Pattern(c) => s"The capture group was ${c}"
-    case _          => "Didn't match anything"
+    case _ => "Didn't match anything"
   }
 
   println(regexMatch)
@@ -94,7 +94,7 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   val tupleMatch = (1, 2) match {
-    case ab@(a, b)  => s"Matching and destructuring a tuple, but keeping the original tuple bound to ab (${ab})"
+    case ab@(a, b) => s"Matching and destructuring a tuple, but keeping the original tuple bound to ab (${ab})"
   }
 
   println(tupleMatch)
@@ -262,10 +262,11 @@ object Main extends App {
   // Implicit defs - we can parameterize our implicit recovery
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit def emptyList[A]: List[A] = List()
-
-  println(implicitly[List[Cat]]) // List()
-  println(implicitly[List[Dog]]) // List()
+  // THIS CAUSES A COMPILER BUG LMAO: https://github.com/scala/bug/issues/11796
+//  implicit def emptyList[A]: List[A] = List()
+//
+//  println(implicitly[List[Cat]]) // List()
+//  println(implicitly[List[Dog]]) // List()
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -287,14 +288,14 @@ object Main extends App {
   // They have a bunch of weird rules that you should probably read about
   // https://docs.scala-lang.org/overviews/core/implicit-classes.htmlz
 
-//  object IntSyntax {
-//    implicit class IntExtensions(private val self: Int) extends AnyVal {
-//      def increment(): Int = self + 1
-//    }
-//
-//  }
+  //  object IntSyntax {
+  //    implicit class IntExtensions(private val self: Int) extends AnyVal {
+  //      def increment(): Int = self + 1
+  //    }
+  //
+  //  }
 
-//  import IntSyntax._
+  //  import IntSyntax._
 
   // println(5.increment()) // 6
 
@@ -317,6 +318,7 @@ object Main extends App {
     }
 
     object Instances {
+
       trait SoundDog extends Sound[Dog] {
         override def sound(a: Dog): String = "woof"
       }
@@ -331,8 +333,9 @@ object Main extends App {
 
       implicit val dogInstance: Sound[Dog] = new SoundDog {}
       implicit val catInstance: Sound[Cat] = new SoundCat {}
-      implicit val rabbitInstance: Sound[Rabbit] =  new SoundRabbit {}
+      implicit val rabbitInstance: Sound[Rabbit] = new SoundRabbit {}
     }
+
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +349,7 @@ object Main extends App {
     println(a.sound())
   }
 
-    makeSoundImplicitParam(Dog())
+  makeSoundImplicitParam(Dog())
   //  makeSoundImplicitParam(Cat())
   //    makeSoundImplicitParam(Rabbit()) // this now works!
 
@@ -374,7 +377,7 @@ object Main extends App {
   // println(5.encode().value) // 5
   // println("hello".encode().value) // "hello"
   //
-  val me = Person(name="Max Bo", age=22, alive=true)
+  val me = Person(name = "Max Bo", age = 22, alive = true)
 
   // println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
 
@@ -402,6 +405,7 @@ object Main extends App {
     }
 
     object Instances {
+
       trait EncodeString extends Encode[String] {
         override def encode(x: String) = Json("\"" + x.toString() + "\"")
       }
@@ -435,6 +439,7 @@ object Main extends App {
 
       implicit val encodeMap: Encode[Map[String, Json]] = new EncodeMap {}
     }
+
   }
 
 
@@ -449,6 +454,7 @@ object Main extends App {
 
   // Note the gap between `Person` and `Encode[Person]`
   object Person {
+
     trait EncodePerson extends Encode[Person] {
       def encode(person: Person): Json =
       // we can obviously do this in a macro
@@ -462,8 +468,8 @@ object Main extends App {
     implicit def encodePerson: Encode[Person] = new EncodePerson {}
   }
 
-    // implicit serach goes into the companion object
-   println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+  // implicit serach goes into the companion object
+  println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
   // this now works!
 
   // obviously these do as well
@@ -572,9 +578,11 @@ object Main extends App {
           instance.map(self)(f)
         }
       }
+
     }
 
     object Instances {
+
       // @ List(1, 2, 3).map(x => x + 1)
       // res0: List[Int] = List(2, 3, 4)
 
@@ -595,6 +603,7 @@ object Main extends App {
 
       implicit val optionFunctorInstance: Functor[Option] = new FunctorOption {}
     }
+
   }
 
 
@@ -681,7 +690,8 @@ object Main extends App {
   // DOCUMENTATION:
   // https://typelevel.org/cats/typeclasses/monad.html
 
-  trait Monad[F[_]] extends Functor[F] { self: Functor[F] =>
+  trait Monad[F[_]] extends Functor[F] {
+    self: Functor[F] =>
     def point[A](a: A): F[A]
 
     // you only have to implement one or the other, as each can be derived from each others impl
@@ -718,6 +728,7 @@ object Main extends App {
 
 
     object Instances {
+
       trait MonadList extends Monad[List] with FunctorList {
         override def point[A](a: A): List[A] = List(a)
 
@@ -739,6 +750,7 @@ object Main extends App {
 
       implicit val listMonadInstance: Monad[List] = new MonadList {}
     }
+
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -822,7 +834,7 @@ object Main extends App {
         def map[A, B](fa: Sync[A])(f: A => B): Sync[B] = Sync.suspend(f(fa.unsafeInterpret()))
       }
 
-      trait MonadSync extends Monad[Sync] with FunctorSync  {
+      trait MonadSync extends Monad[Sync] with FunctorSync {
         def point[A](a: A): Sync[A] = Sync.suspend(a)
 
         override def flatten[A](ffa: Sync[Sync[A]]): Sync[A] =
@@ -834,6 +846,7 @@ object Main extends App {
       implicit val syncFunctorInstance: Functor[Sync] = new FunctorSync {}
       implicit val syncMonadInstance: Monad[Sync] = new MonadSync {}
     }
+
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -841,6 +854,7 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   object IO {
+
     object Unsafe {
       def writeFile(filename: String, contents: String): Unit = {
         new PrintWriter(filename) {
@@ -875,6 +889,7 @@ object Main extends App {
       def deleteFile(filename: String): Sync[Unit] =
         Sync.suspend(IO.Unsafe.deleteFile(filename))
     }
+
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -906,10 +921,10 @@ object Main extends App {
   } yield ()
 
   // is equivalent to
-//       IO.Safe.readFile(contents)
-//         .flatMap(contents => IO.Safe.writeFile(to, contents)
-//            .map(_ => ())
-//         )
+  //       IO.Safe.readFile(contents)
+  //         .flatMap(contents => IO.Safe.writeFile(to, contents)
+  //            .map(_ => ())
+  //         )
 
   copy("a.txt", "b.txt") // won't do anything
   copy("a.txt", "b.txt").unsafeInterpret() // will actually do stuff
@@ -932,6 +947,7 @@ object Main extends App {
   // - https://typelevel.org/cats/typeclasses/functor.html
 
   object Function1FunctorInstances {
+
     trait FunctorFunction1[R] extends Functor[R => ?] {
       def map[A, B](fa: R => A)(f: A => B): R => B = fa.andThen(f)
 
@@ -955,6 +971,7 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   object Function1MonadInstances {
+
     trait MonadFunction1[R] extends Monad[R => ?] with FunctorFunction1[R] {
       def point[A](a: A): R => A =
         (_: R) => a
@@ -1224,6 +1241,7 @@ object Main extends App {
     }
 
     object Instances {
+
       trait SemigroupList[A] extends Semigroup[List[A]] {
         override def <>(here: List[A])(there: List[A]): List[A] =
           here ++ there
@@ -1305,20 +1323,20 @@ object Main extends App {
   import Monoid.Instances._
   import Semigroup.Syntax._
 
-//  println(1 <> Monoid.mempty[Int]) // 1
-//  println(Monoid.mempty[Int] <> 1) // 1
-//  println(1 <> 2) // 3
-//
-//  println(Monoid.mconcat(List(1, 2, 3))) // 6
-//
-//  println(Map("hello" -> "world") <> Map("my name" -> "is Max")) // // Map(hello -> world, my name -> is Max)
-//
-//  println(Monoid.mconcat(
-//    List(
-//      Map("hello" -> "world"),
-//      Map("my name" -> "is Max"),
-//    ))
-//  ) // Map(hello -> world, my name -> is Max)
+  //  println(1 <> Monoid.mempty[Int]) // 1
+  //  println(Monoid.mempty[Int] <> 1) // 1
+  //  println(1 <> 2) // 3
+  //
+  //  println(Monoid.mconcat(List(1, 2, 3))) // 6
+  //
+  //  println(Map("hello" -> "world") <> Map("my name" -> "is Max")) // // Map(hello -> world, my name -> is Max)
+  //
+  //  println(Monoid.mconcat(
+  //    List(
+  //      Map("hello" -> "world"),
+  //      Map("my name" -> "is Max"),
+  //    ))
+  //  ) // Map(hello -> world, my name -> is Max)
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monoid
@@ -1391,7 +1409,8 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait LinkedList[+A] { self =>
+  sealed trait LinkedList[+A] {
+    self =>
     def map[B](f: A => B): LinkedList[B] = {
       self match {
         case Link(head, tail) => Link(f(head), tail.map(f))
@@ -1401,6 +1420,7 @@ object Main extends App {
   }
 
   case class Link[+A](head: A, tail: LinkedList[A]) extends LinkedList[A]
+
   case object End extends LinkedList[Nothing]
 
   val ll = Link(1, Link(2, Link(3, End)))
@@ -1414,7 +1434,8 @@ object Main extends App {
 
   type ~>[F[_], G[_]] = NaturalTransformation[F, G]
 
-  trait NaturalTransformation[F[_], G[_]] { self =>
+  trait NaturalTransformation[F[_], G[_]] {
+    self =>
     def apply[A](fa: F[A]): G[A]
   }
 
@@ -1434,6 +1455,7 @@ object Main extends App {
   }
 
   object Free {
+
     final case class Point[G[_], A](a: A) extends Free[G, A]
 
     final case class Suspend[G[_], A](ga: G[A]) extends Free[G, A]
@@ -1461,6 +1483,7 @@ object Main extends App {
 
       implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new MonadFree[G] {}
     }
+
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1470,6 +1493,7 @@ object Main extends App {
   sealed trait FileOpM[A]
 
   object FileOpM {
+
     case class WriteFileM(filename: String, contents: String) extends FileOpM[Unit]
 
     case class ReadFileM(filename: String) extends FileOpM[String]
@@ -1565,11 +1589,13 @@ object Main extends App {
       two <- IO.Safe.readFile(filenames._2)
     } yield one + two
   }
+
   // see sumAgeOfPersonAndParentsC
 
   ///////////////////////////////////////////////////////////////////////////////
 
   object MoreSyncInstances {
+
     import scala.concurrent._
     import scala.concurrent.duration._
 
@@ -1597,7 +1623,7 @@ object Main extends App {
 
           f(a)(b)
         }
-      }
+    }
 
     implicit def syncApplicativeInstance: Applicative[Sync] = new ApplicativeSync {}
   }
@@ -1617,7 +1643,8 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  trait Applicative[F[_]] extends Functor[F] { self: Functor[F] =>
+  trait Applicative[F[_]] extends Functor[F] {
+    self: Functor[F] =>
     def pure[A](a: A): F[A]
 
     // can define one or the other
@@ -1639,6 +1666,7 @@ object Main extends App {
       instance.liftA2(f)(fa)(fb)
 
     object Syntax {
+
       implicit class ApplicativeIdExtensions[A](private val self: A) extends AnyVal {
         def pure[F[_]](implicit instance: Applicative[F]): F[A] = {
           instance.pure(self)
@@ -1650,9 +1678,11 @@ object Main extends App {
           instance.ap(self)(fa)
         }
       }
+
     }
 
     object Instances {
+
       trait ApplicativeOption extends Applicative[Option] with FunctorOption {
         override def pure[A](a: A): Option[A] = Some(a)
 
@@ -1667,25 +1697,30 @@ object Main extends App {
     }
 
     object Utils {
-      def derivePure[F[_]: Monad, A](a: A): F[A] =
+      def derivePure[F[_] : Monad, A](a: A): F[A] =
         a.point[F]
 
-      def deriveAp[F[_]: Monad, A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
+      def deriveAp[F[_] : Monad, A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
         f <- ff
         a <- fa
       } yield f(a)
     }
+
   }
 
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Validated[+E, +A]
+
   case class Valid[E, A](value: A) extends Validated[E, A]
+
   case class Invalid[E, A](error: E) extends Validated[E, A]
 
   // HIDE ME
   object Validated {
+
     object Instances {
+
       trait FunctorValidated[E] extends Functor[Validated[E, ?]] {
         override def map[A, B](fa: Validated[E, A])(f: A => B): Validated[E, B] = {
           fa match {
@@ -1723,6 +1758,7 @@ object Main extends App {
           }
       }
     }
+
   }
 
   object CredentialValidator {
@@ -1750,11 +1786,11 @@ object Main extends App {
     }
 
     object UserCredentials {
-//      def apply(username: String, password: String): Validated[List[String], UserCredentials] =
-//        for {
-//          username <- validateEmail(username)
-//          password <- validatePassword(password)
-//        } yield new UserCredentials(username = username, password = password) {}
+      //      def apply(username: String, password: String): Validated[List[String], UserCredentials] =
+      //        for {
+      //          username <- validateEmail(username)
+      //          password <- validatePassword(password)
+      //        } yield new UserCredentials(username = username, password = password) {}
 
       // HIDE ME
       def apply(username: String, password: String): Validated[List[String], UserCredentials] = {
@@ -1776,15 +1812,15 @@ object Main extends App {
     }
   }
 
-    ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
 
   // Seen in a previous episode
-//  def sumAgeOfPersonAndParentsC(member: FamilyMember): Option[Int] = {
-//    for {
-//      mother <- member.mother
-//      father <- member.father
-//    } yield member.age + mother.age + father.age
-//  }
+  //  def sumAgeOfPersonAndParentsC(member: FamilyMember): Option[Int] = {
+  //    for {
+  //      mother <- member.mother
+  //      father <- member.father
+  //    } yield member.age + mother.age + father.age
+  //  }
 
   import Applicative.Syntax._
   import Applicative.Instances._
@@ -1827,9 +1863,10 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit class ListExtensions[F[_]: Applicative, A](xs: List[F[A]]) {
+  implicit class ListExtensions[F[_] : Applicative, A](xs: List[F[A]]) {
     def sequenceAL(): F[List[A]] = {
       val collector: F[List[A]] = List.empty[A].pure[F]
+
       def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
         xs.prepended(x)
 
