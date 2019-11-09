@@ -1601,7 +1601,7 @@ object Main extends App {
 
     trait ApplicativeSync extends Applicative[Sync] with FunctorSync {
       override def pure[A](a: A): Sync[A] =
-        Applicative.Utils.derivePure(a)(Sync.Instances.syncMonadInstance)[Sync]
+        Applicative.Utils.derivePure[Sync, A](a)
 
       // This is obviously an incredibly dumb way of implementing this,
       // but I hope you get the gist. We defer to the stdlib to give us a way of running two
