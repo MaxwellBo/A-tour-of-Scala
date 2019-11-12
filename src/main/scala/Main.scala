@@ -2,6 +2,7 @@ import java.io.{File, PrintWriter}
 
 import scala.concurrent.Future
 import scala.io.Source
+import pprint.log
 
 object Main extends App {
 
@@ -35,11 +36,11 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   def makeSound(animal: Animal): Unit = {
-    println(animal.sound)
+    log(animal.sound)
   }
 
-  //    makeSound(Cat())
-  //  makeSound(Dog())
+//   makeSound(Cat("Spock")) // meow
+//   makeSound(Dog()) // woof
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -51,7 +52,7 @@ object Main extends App {
 
   import ThirdPartyLibrary.Rabbit
 
-  //   makeSound(Rabbit())
+  // makeSound(Rabbit()) // error: type mismatch
 
   ///////////////////////////////////////////////////////////////////////////////
   // Pattern matching = Type recognition + destructuring
@@ -59,16 +60,20 @@ object Main extends App {
 
   val (x, y) = (1, 2) // destructuring a tuple
 
-  val Cat(name) = Cat("Boris")
 
-  val animal: Animal = Dog()
+  val boris = Cat("Boris")
+
+  val Cat(name) = boris
+  log(name) // Boris
+
+  val animal: Animal = boris
 
   val animalMatch = animal match { // demo case (exhaustive)
     case Cat(n) => s"Saw a cat with name $n"
     case Dog() => "Saw a dog"
   }
 
-  //  println(animalMatch)
+  log(animalMatch) // Saw a cat with name Boris
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -76,20 +81,21 @@ object Main extends App {
     case 1 => "Matching on a literal"
     case 2 | 3 => "Matching on multiple literals"
     case x if 1 until 10 contains x => s"Matching with guard: caught $x"
-    case i: Int => s"Matching on type: caught ${x}"
+    case _ => "Didn't match anything"
   }
-  println(intMatch)
+
+  log(intMatch) // Matching with guard: caught 5
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  val Pattern = "([a-cA-C]+)".r
+  val Pattern = "([a-c]+)".r
 
   val regexMatch = "abcdefg" match {
     case Pattern(c) => s"The capture group was ${c}"
     case _ => "Didn't match anything"
   }
 
-  println(regexMatch)
+  log(regexMatch) // The capture group was abc
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -97,7 +103,7 @@ object Main extends App {
     case ab@(a, b) => s"Matching and destructuring a tuple, but keeping the original tuple bound to ab (${ab})"
   }
 
-  println(tupleMatch)
+  log(tupleMatch) // Matching and destructuring a tuple, but keeping the original tuple bound to ab ((1,2))
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function defintion syntax variants - many ways to skin a cat
@@ -127,23 +133,23 @@ object Main extends App {
   // Currying - applying one parameter at a time
   ///////////////////////////////////////////////////////////////////////////////
 
-  // println(add(3, 5))
+  // log(add(3, 5))
 
   def addCurried(x: Int)(y: Int): Int =
     x + y
 
-  // println(addCurried(3)(5))
+  // log(addCurried(3)(5))
 
   val addCurriedOuterAnon = (x: Int) => (y: Int) => { // might be familiar to people who've written JS
     x + y
   }
 
-  // println(addCurriedOuterAnon(3)(5))
+  // log(addCurriedOuterAnon(3)(5))
 
   val add3: Int => Int =
     addCurried(3)
 
-  // println(add3(5))
+  // log(add3(5))
 
   val add4: Int => Int =
     addOuterAnon.curried(4)
@@ -154,20 +160,20 @@ object Main extends App {
 
   val addUncurried = Function.uncurried(addCurriedOuterAnon)
 
-  println(addUncurried(3, 5)) // we can call it normally again!
+  log(addUncurried(3, 5)) // we can call it normally again!
 
   ///////////////////////////////////////////////////////////////////////////////
   // `def` enabling call by name
   ///////////////////////////////////////////////////////////////////////////////
 
   def emptyParamterList() =
-    println("I'm a function that has an empty paramater list")
+    log("I'm a function that has an empty paramater list")
 
   // emptyParamterList()
   // emptyParamterList()
 
   def noParameterList =
-    println("I'm a function that has no parameter list")
+    log("I'm a function that has no parameter list")
 
   // noParameterList
   // noParameterList
@@ -183,7 +189,7 @@ object Main extends App {
 
   def getsImplicitString()(implicit x: String) = x
 
-  //   println(getsImplicitString()) // implicit String
+  //   log(getsImplicitString()) // implicit String
 
   ///////////////////////////////////////////////////////////////////////////////
   // A sensible usecase for implicits
@@ -192,16 +198,16 @@ object Main extends App {
   case class TenantInfo(tenantId: String) // this is unique per request
 
   def dataAccessLayer()(implicit ctx: TenantInfo): Unit = {
-    println(s"Accessing DB for tenant ${ctx.tenantId}")
+    log(s"Accessing DB for tenant ${ctx.tenantId}")
   }
 
   def serviceLayer()(implicit ctx: TenantInfo): Unit = {
-    println("Doing some business logic stuff")
+    log("Doing some business logic stuff")
     dataAccessLayer()
   }
 
   def controller(): Unit = {
-    println("Doing some controller stuff to recover the `tenantId` from the request (maybe verifying a cookie)")
+    log("Doing some controller stuff to recover the `tenantId` from the request (maybe verifying a cookie)")
     implicit val tenantContext = TenantInfo(tenantId = "3e4ff4a9-0631-49d7-b250-3318e8acfcc4")
     serviceLayer()
   }
@@ -219,8 +225,8 @@ object Main extends App {
     x
   }
 
-  //   println(rawImplicitly[Boolean]) // true
-  //   println(rawImplicitly[Int]) // 5
+  //   log(rawImplicitly[Boolean]) // true
+  //   log(rawImplicitly[Int]) // 5
 
   ///////////////////////////////////////////////////////////////////////////////
   // Generic parameters can be higher-kinded, and is compatible with implicit resolution
@@ -236,8 +242,8 @@ object Main extends App {
   // scala> :k List
   // List's kind is F[+A]
 
-  //   println(hktImplicitly[List]) // List(5)
-  //   println(hktImplicitly[Option]) // Some(5)
+  //   log(hktImplicitly[List]) // List(5)
+  //   log(hktImplicitly[Option]) // Some(5)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -254,19 +260,18 @@ object Main extends App {
     x
   }
 
-  // println(hktAppImplicitly[List, String]) // List("hello")
-  // println(hktAppImplicitly[List, Boolean]) // List(true)
-  // println(hktAppImplicitly[Id, String]) // "implicit String"
+  // log(hktAppImplicitly[List, String]) // List("hello")
+  // log(hktAppImplicitly[List, Boolean]) // List(true)
+  // log(hktAppImplicitly[Id, String]) // "implicit String"
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicit defs - we can parameterize our implicit recovery
   ///////////////////////////////////////////////////////////////////////////////
 
-  // THIS CAUSES A COMPILER BUG LMAO: https://github.com/scala/bug/issues/11796
-//  implicit def emptyList[A]: List[A] = List()
-//
-//  println(implicitly[List[Cat]]) // List()
-//  println(implicitly[List[Dog]]) // List()
+  implicit def emptyList[A]: Option[A] = None
+
+  log(implicitly[Option[Cat]]) // None
+  log(implicitly[Option[Dog]]) // None
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -277,9 +282,10 @@ object Main extends App {
     override def sound: String = s"static: ${super.sound}"
   }
 
-  println(StaticCat.sound) // don't have to construct StaticCat - is global
+  // don't have to construct StaticCat - is global
+  log(StaticCat.sound)  // static: meow
 
-  println(implicitly[Cat].sound) // static meow
+  log(implicitly[Cat].sound) // static: meow
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicit classes - classes that auto-wrap themselves around a receiver
@@ -288,16 +294,16 @@ object Main extends App {
   // They have a bunch of weird rules that you should probably read about
   // https://docs.scala-lang.org/overviews/core/implicit-classes.htmlz
 
-  //  object IntSyntax {
-  //    implicit class IntExtensions(private val self: Int) extends AnyVal {
-  //      def increment(): Int = self + 1
-  //    }
-  //
-  //  }
+    object IntSyntax {
+      implicit class IntExtensions(private val self: Int) extends AnyVal {
+        def increment(): Int = self + 1
+      }
 
-  //  import IntSyntax._
+    }
 
-  // println(5.increment()) // 6
+  import IntSyntax._
+
+   log(5.increment()) // 6
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -346,7 +352,7 @@ object Main extends App {
   import Sound.Syntax._
 
   def makeSoundImplicitParam[A](a: A)(implicit instance: Sound[A]): Unit = {
-    println(a.sound())
+    log(a.sound())
   }
 
   makeSoundImplicitParam(Dog())
@@ -355,7 +361,7 @@ object Main extends App {
 
   def makeSoundGenericRequirement[A: Sound](a: A): Unit = {
     // val instance = implicitly[Sound[A]] // we can still recover the instance
-    println(a.sound())
+    log(a.sound())
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -374,12 +380,12 @@ object Main extends App {
   // What do we want the JSON encoding API to look like
   ///////////////////////////////////////////////////////////////////////////////
 
-  // println(5.encode().value) // 5
-  // println("hello".encode().value) // "hello"
+  // log(5.encode().value) // 5
+  // log("hello".encode().value) // "hello"
   //
   val me = Person(name = "Max Bo", age = 22, alive = true)
 
-  // println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+  // log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -469,12 +475,12 @@ object Main extends App {
   }
 
   // implicit serach goes into the companion object
-  println(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+  log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
   // this now works!
 
   // obviously these do as well
-  // println(5.encode().value)
-  // println("hello".encode().value)
+  // log(5.encode().value)
+  // log("hello".encode().value)
 
   ////////////////////////////////////////////////////////////////////////////////
   // Declaring requirements of `Encode`
@@ -482,7 +488,7 @@ object Main extends App {
 
   def needsAnEncoderGenericRequirement[A: Encode](a: A) {
     // val instance = implicitly[Encode[A]] // we can still recover the instance
-    println(a.encode().value)
+    log(a.encode().value)
   }
 
   // needsAnEncoderGenericRequirement(me) // { "name": "Max Bo", "age": 22, "alive": true }
@@ -536,10 +542,10 @@ object Main extends App {
     mother.map(_.age)
   }
 
-  //  println(getParentsAges(son)) // List(55, 56)
-  //  println(getParentsAges(grandma)) // List()
-  //  println(getMothersAge(son)) // Some(55)
-  //  println(getMothersAge(grandma)) // None
+  //  log(getParentsAges(son)) // List(55, 56)
+  //  log(getParentsAges(grandma)) // List()
+  //  log(getMothersAge(son)) // Some(55)
+  //  log(getMothersAge(grandma)) // None
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -551,10 +557,10 @@ object Main extends App {
     member.map(familyMember => familyMember.age)
   }
 
-  //  println(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
-  //  println(getAgeFromList(grandma.parents)) // List()
-  //  println(getAgeFromOption(son.mother)) // Some(55)
-  //  println(getAgeFromOption(grandma.mother)) // None
+  //  log(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
+  //  log(getAgeFromList(grandma.parents)) // List()
+  //  log(getAgeFromOption(son.mother)) // Some(55)
+  //  log(getAgeFromOption(grandma.mother)) // None
 
   // How do we make something like this? 🤔
   //   def getAge[F[_]: ???](f: F[FamilyMember]): F[Int] = {
@@ -618,8 +624,8 @@ object Main extends App {
     f.map(_.age)
   }
 
-  // println(getAge(family)) // List(103, 79, 82, 55, 56, 22)
-  // println(getAge(son.mother)) // Some(55)
+  // log(getAge(family)) // List(103, 79, 82, 55, 56, 22)
+  // log(getAge(son.mother)) // Some(55)
 
   ////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////
@@ -639,8 +645,8 @@ object Main extends App {
           .map(greatGrandmother => greatGrandmother.age)))
   }
 
-  //  println(getGreatGrandMatriarchAge(son)) // Some(Some(Some(103)))
-  //  println(getGreatGrandMatriarchAge(mum)) // Some(Some(None))
+  //  log(getGreatGrandMatriarchAge(son)) // Some(Some(Some(103)))
+  //  log(getGreatGrandMatriarchAge(mum)) // Some(Some(None))
 
   def getAllGreatGrandparentAges(member: FamilyMember): List[List[List[Int]]] = {
     member.parents
@@ -649,7 +655,7 @@ object Main extends App {
           .map(greatGrandparent => greatGrandparent.age)))
   }
 
-  //  println(getAllGreatGrandparentAges(son)) // List(List(List(103)), List(List(104)))
+  //  log(getAllGreatGrandparentAges(son)) // List(List(List(103)), List(List(104)))
 
   def sumAgeOfPersonAndParents(member: FamilyMember): Option[Option[Int]] = {
     member.mother.map(mother =>
@@ -659,8 +665,8 @@ object Main extends App {
     )
   }
 
-  //  println(sumAgeOfPersonAndParents(son)) // Some(Some(133))
-  //  println(sumAgeOfPersonAndParents(mum)) // Some(None)
+  //  log(sumAgeOfPersonAndParents(son)) // Some(Some(133))
+  //  log(sumAgeOfPersonAndParents(mum)) // Some(None)
 
   ////////////////////////////////////////////////////////////////////////////////
   // A hacky way out?
@@ -681,8 +687,8 @@ object Main extends App {
     ).map(greatGrandmother => greatGrandmother.age)
   }
 
-  //  println(getGreatMatriarchAgeFlatten(son)) // Some(103)
-  //  println(getGreatMatriarchAgeFlatten(mum)) // None
+  //  log(getGreatMatriarchAgeFlatten(son)) // Some(103)
+  //  log(getGreatMatriarchAgeFlatten(mum)) // None
 
   ////////////////////////////////////////////////////////////////////////////////
   // Or a reasonable solution
@@ -769,8 +775,8 @@ object Main extends App {
     //                           _eliminates_ nesting
   }
 
-  //  println(getGreatGrandMatriarchAgeM(son)) // Some(79)
-  //  println(getGreatGrandMatriarchAgeM(mum) // None
+  //  log(getGreatGrandMatriarchAgeM(son)) // Some(79)
+  //  log(getGreatGrandMatriarchAgeM(mum) // None
 
   def getAllGreatGrandparentAgesM(member: FamilyMember): List[Int] = {
     member.parents
@@ -779,7 +785,7 @@ object Main extends App {
       .map(greatGrandparent => greatGrandparent.age)
   }
 
-  //  println(getAllGreatGrandparentAgesM(son)) // List(103, 104)
+  //  log(getAllGreatGrandparentAgesM(son)) // List(103, 104)
 
   def sumAgeOfPersonAndParentsM(member: FamilyMember): Option[Int] = {
     member.mother.flatMap(mother =>
@@ -789,8 +795,8 @@ object Main extends App {
     )
   }
 
-  //  println(sumAgeOfPersonAndParents(son)) // Some(133)
-  //  println(sumAgeOfPersonAndParents(mum)) // None
+  //  log(sumAgeOfPersonAndParents(son)) // Some(133)
+  //  log(sumAgeOfPersonAndParents(mum)) // None
 
   ///////////////////////////////////////////////////////////////////////////////
   // `for` notation
@@ -875,7 +881,7 @@ object Main extends App {
 
     object Safe {
       def putStrLn(line: String): Sync[Unit] =
-        Sync.suspend(println(line))
+        Sync.suspend(log(line))
 
       def getStrLn(): Sync[String] =
         Sync.suspend(scala.io.StdIn.readLine())
@@ -938,7 +944,7 @@ object Main extends App {
 
   val isBigNumber: Int => Boolean = showInt.andThen(isBigString)
 
-  //  println(isBigNumber(10000)) // true
+  //  log(isBigNumber(10000)) // true
 
   ///////////////////////////////////////////////////////////////////////////////
   // The reader Functor
@@ -966,7 +972,7 @@ object Main extends App {
 
   val isBigNumberM: Int => Boolean = showInt.map(isBigString)
 
-  //  println(isBigNumberM(10000)) // true
+  //  log(isBigNumberM(10000)) // true
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -1001,7 +1007,7 @@ object Main extends App {
   //        .flatMap(toString => ((x: Int)   => x % 2 == 0)
   //          .map(isEven => (addOne, toString, isEven))))
   //
-  //   println(doTransforms(0)) // (1, "0", true)
+  //   log(doTransforms(0)) // (1, "0", true)
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1063,13 +1069,13 @@ object Main extends App {
   } yield s"The final value is $last"
 
   // where 0 is the initial value
-  // println(computation.run(0)) // What's the final value?
+  // log(computation.run(0)) // What's the final value?
 
   //val computationTake2 = State.put(5)
   //      .flatMap(_ => State.get())
   //      .map(x => x + 1)
 
-  // println(computationTake2.run(0)) // What's the final value?
+  // log(computationTake2.run(0)) // What's the final value?
 
   ///////////////////////////////////////////////////////////////////////////////
   //  Does composition always work?
@@ -1133,7 +1139,7 @@ object Main extends App {
   val getGreatGrandmotherAgeR: FamilyMember => Option[Int] =
     getMotherK.andThen(getMotherK).andThen(getMotherK).map(_.age).run
 
-  //  println(getGreatGrandmotherAgeR(son)) // Some(103)
+  //  log(getGreatGrandmotherAgeR(son)) // Some(103)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Fake Akka directives
@@ -1184,21 +1190,21 @@ object Main extends App {
     body <- Kleisli(extractBody)
   } yield HttpResponse(Some(body))
 
-  //  println(postHandler.run(
+  //  log(postHandler.run(
   //    HttpRequest(
   //      "POST",
   //      Map("Authorisation" -> "Admin"),
   //      Some("Hello world")
   //  ))) // Some(HttpResponse("Hello world"))
 
-  //  println(postHandler.run(
+  //  log(postHandler.run(
   //    HttpRequest(
   //      "POST",
   //      Map("Authorisation" -> "Not Admin"),
   //      Some("Hello world")
   //  ))) // None
 
-  //  println(postHandler.run(
+  //  log(postHandler.run(
   //    HttpRequest(
   //      "GET",
   //      Map("Authorisation" -> "Admin"),
@@ -1323,15 +1329,15 @@ object Main extends App {
   import Monoid.Instances._
   import Semigroup.Syntax._
 
-  //  println(1 <> Monoid.mempty[Int]) // 1
-  //  println(Monoid.mempty[Int] <> 1) // 1
-  //  println(1 <> 2) // 3
+  //  log(1 <> Monoid.mempty[Int]) // 1
+  //  log(Monoid.mempty[Int] <> 1) // 1
+  //  log(1 <> 2) // 3
   //
-  //  println(Monoid.mconcat(List(1, 2, 3))) // 6
+  //  log(Monoid.mconcat(List(1, 2, 3))) // 6
   //
-  //  println(Map("hello" -> "world") <> Map("my name" -> "is Max")) // // Map(hello -> world, my name -> is Max)
+  //  log(Map("hello" -> "world") <> Map("my name" -> "is Max")) // // Map(hello -> world, my name -> is Max)
   //
-  //  println(Monoid.mconcat(
+  //  log(Monoid.mconcat(
   //    List(
   //      Map("hello" -> "world"),
   //      Map("my name" -> "is Max"),
@@ -1372,6 +1378,8 @@ object Main extends App {
       FileOp.writeFile("b.txt", "b")
   }
 
+  log(program)
+
   import java.io.PrintWriter
 
   def prodInterpreter(op: FileOp): List[Unit] = {
@@ -1379,7 +1387,7 @@ object Main extends App {
       case WriteFile(filename, contents) =>
         IO.Unsafe.writeFile(filename, contents)
       case ReadFile(filename) =>
-        println(IO.Unsafe.readFile(filename))
+        log(IO.Unsafe.readFile(filename))
       case DeleteFile(filename) =>
         IO.Unsafe.deleteFile(filename)
     }
@@ -1398,8 +1406,8 @@ object Main extends App {
     }
   }
 
-  //  println(Monoid.mconcatMap(program)(prodInterpreter))
-  //  println(Monoid.mconcatMap(program)(testInterpreter))
+  //  log(Monoid.mconcatMap(program)(prodInterpreter))
+  //  log(Monoid.mconcatMap(program)(testInterpreter))
 
   // 🤔
   def appendFile(filename: String, contents: String): List[FileOp] = {
@@ -1425,7 +1433,7 @@ object Main extends App {
 
   val ll = Link(1, Link(2, Link(3, End)))
 
-  //  println(ll.map(_ + 1))
+  //  log(ll.map(_ + 1))
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monad
@@ -1526,6 +1534,8 @@ object Main extends App {
     _ <- appendFileM("bM.txt", "cM")
   } yield ()
 
+  log(programM)
+
   import FileOpM._
 
   def prodInterpreterM: FileOpM ~> Sync = new (FileOpM ~> Sync) {
@@ -1561,8 +1571,10 @@ object Main extends App {
       }
   }
 
-  programM.foldMap(prodInterpreterM).unsafeInterpret()
-  programM.foldMap(testInterpreterM).run(Map.empty)
+  val sync = programM.foldMap(prodInterpreterM).unsafeInterpret()
+  val map = programM.foldMap(testInterpreterM).run(Map.empty)
+
+  log(map)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Why is it called the Free Monad
@@ -1600,8 +1612,7 @@ object Main extends App {
     import scala.concurrent.duration._
 
     trait ApplicativeSync extends Applicative[Sync] with FunctorSync {
-      override def pure[A](a: A): Sync[A] =
-        Applicative.Utils.derivePure[Sync, A](a)
+      override def pure[A](a: A): Sync[A] = Sync.suspend(a)
 
       // This is obviously an incredibly dumb way of implementing this,
       // but I hope you get the gist. We defer to the stdlib to give us a way of running two
@@ -1697,15 +1708,19 @@ object Main extends App {
     }
 
     object Utils {
-      def derivePure[F[_] : Monad, A](a: A): F[A] =
-        a.point[F]
+      def deriveApplicative[F[_]: Monad]() = new Applicative[F] {
+        def map[A, B](fa: F[A])(f: A => B): F[B] =
+          fa.map(f)
 
-      def deriveAp[F[_] : Monad, A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
-        f <- ff
-        a <- fa
-      } yield f(a)
+        def pure[A](a: A): F[A] =
+          a.point[F]
+
+        override def ap[A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
+          f <- ff
+          a <- fa
+        } yield f(a)
+      }
     }
-
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1802,13 +1817,13 @@ object Main extends App {
     }
 
     def signup[E](credentials: Valid[E, UserCredentials]): Unit = {
-      println(credentials)
+      log(credentials)
     }
 
     CredentialValidator.UserCredentials("Max Bo", "hunter2") match {
       case v@Valid(_) => signup(v)
       //    case i@Invalid(_) => signup(i)
-      case Invalid(error) => println(error)
+      case Invalid(error) => log(error)
     }
   }
 
@@ -1834,6 +1849,9 @@ object Main extends App {
     Applicative.liftA2(addOuterAnon.curried)(motherAge)(fatherAge)
   }
 
+  //  log(sumAgeOfPersonAndParentsA(son)) // Some(133)
+  //  log(sumAgeOfPersonAndParentsA(mum)) // None
+
   ///////////////////////////////////////////////////////////////////////////////
   // After that "brief" interlude, back to running things in parallel
   ///////////////////////////////////////////////////////////////////////////////
@@ -1854,12 +1872,10 @@ object Main extends App {
     xs.foldRight[Sync[List[A]]](collector)(lifted)
   }
 
-  val toPut = List(
-    IO.Safe.putStrLn("hello"),
-    IO.Safe.putStrLn("world")
-  )
-
-  sequenceSyncList(toPut).unsafeInterpret()
+  sequenceSyncList(List(
+    "README.md",
+    "LICENSE"
+  ).map(IO.Safe.readFile)).unsafeInterpret()
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -1877,16 +1893,30 @@ object Main extends App {
     }
   }
 
-  toPut.sequenceAL().unsafeInterpret()
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val metadataSequence = List(
+    "README.md",
+    "LICENSE"
+  ).map(IO.Safe.readFile).sequenceAL()
+
+  metadataSequence.unsafeInterpret()
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  val toSeq: List[Option[Int]] = List(
-    Some(5),
-    None
-  )
+  implicit def applicativeState[S]: Applicative[State[S, ?]] =
+    Applicative.Utils.deriveApplicative[State[S, ?]]()
 
-  println(toSeq.sequenceAL())
+  val stateSequence = List(
+    State.put[Int](0),
+    State.modify[Int](_ + 1)
+  ).sequenceAL()
+
+  log(stateSequence.run(0))
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  log(List(Some(5), None, Some(7)).sequenceAL())
 }
 
 
