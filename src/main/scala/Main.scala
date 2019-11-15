@@ -315,8 +315,8 @@ object Main extends App {
 
     object Syntax {
 
-      implicit class CanMakeSoundIdExtensions[A](private val self: A) extends AnyVal {
-        def sound()(implicit instance: Sound[A]): String = {
+      implicit class SoundIdExtensions[A](private val self: A) extends AnyVal {
+        def soundExtension()(implicit instance: Sound[A]): String = {
           instance.sound(self)
         }
       }
@@ -352,16 +352,17 @@ object Main extends App {
   import Sound.Syntax._
 
   def makeSoundImplicitParam[A](a: A)(implicit instance: Sound[A]): Unit = {
-    log(a.sound())
+    log(a.soundExtension())
   }
 
   makeSoundImplicitParam(Dog())
   //  makeSoundImplicitParam(Cat())
   //    makeSoundImplicitParam(Rabbit()) // this now works!
 
+  // this desugars to the method above
   def makeSoundGenericRequirement[A: Sound](a: A): Unit = {
     // val instance = implicitly[Sound[A]] // we can still recover the instance
-    log(a.sound())
+    log(a.soundExtension())
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1917,6 +1918,7 @@ object Main extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   log(List(Some(5), None, Some(7)).sequenceAL())
-}
+
+  ///////////////////////////////////////////////////////////////////////////////
 
 
