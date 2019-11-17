@@ -1,9 +1,5 @@
 import java.io.{File, PrintWriter}
 
-import Main.Applicative.Instances.ApplicativeState
-import Main.Free.FlatMapped
-import Main.MoreSyncInstances.ApplicativeSync
-
 import scala.concurrent.Future
 import scala.io.Source
 import pprint.log
@@ -739,6 +735,7 @@ object Main extends App {
     }
 
     object Instances {
+
       import Applicative.Instances._
 
       trait MonadList extends Monad[List] with ApplicativeList {
@@ -1051,6 +1048,7 @@ object Main extends App {
       }
 
       implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new FunctorState[S] {}
+
       implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new MonadState[S] {}
     }
 
@@ -1295,7 +1293,9 @@ object Main extends App {
       }
 
       implicit def listSemigroupInstance[A]: Semigroup[List[A]] = new SemigroupList[A] {}
+
       implicit def sumSemigroupInstance[A]: Semigroup[Int] = new SemigroupSum {}
+
       implicit def mapRightBiasSemigroupInstance[K, V]: Semigroup[Map[K, V]] = new SemigroupRightBiasMap[K, V] {}
     }
 
@@ -1324,7 +1324,9 @@ object Main extends App {
       }
 
       implicit def listMonoidInstance[A]: Monoid[List[A]] = new MonoidList[A] {}
+
       implicit def sumMonoidInstance: Monoid[Int] = new MonoidSum {}
+
       implicit def mapRightBiasMonoidInstance[K, V]: Monoid[Map[K, V]] = new MonoidRightBiasMap[K, V] {}
 
     }
@@ -1493,19 +1495,21 @@ object Main extends App {
 
       trait FunctorFree[G[_]] extends Functor[Free[G, ?]] {
         def map[A, B](fa: Free[G, A])(f: A => B): Free[G, B] =
-          freeMonadInstance.flatMap(fa)(a => Point(f(a)))
+          FlatMapped(fa, (a: A) => Point(f(a)))
       }
 
       import Applicative.Instances._
 
       trait MonadFree[G[_]] extends Monad[Free[G, ?]] with ApplicativeFree[G] {
-        override def point[A](a: A): Free[G, A] = Point(a)
+        override def point[A](a: A): Free[G, A] =
+          Point(a)
 
         override def flatMap[A, B](fa: Free[G, A])(f: A => Free[G, B]): Free[G, B] =
           FlatMapped(fa, f)
       }
 
       implicit def freeFunctorInstance[G[_]]: Functor[Free[G, ?]] = new FunctorFree[G] {}
+
       implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new MonadFree[G] {}
     }
 
@@ -1710,6 +1714,7 @@ object Main extends App {
     }
 
     object Instances {
+
       trait ApplicativeOption extends Applicative[Option] with FunctorOption {
         override def pure[A](a: A): Option[A] =
           Some(a)
@@ -1757,7 +1762,7 @@ object Main extends App {
         }
       }
 
-      trait ApplicativeFree[G[_]] extends Applicative[Free[G,  ?]] with FunctorFree[G] {
+      trait ApplicativeFree[G[_]] extends Applicative[Free[G, ?]] with FunctorFree[G] {
         override def pure[A](a: A): Free[G, A] = Free.Point(a)
 
         // this is a lot of overhead just to Applicative operations on Free.
@@ -1772,11 +1777,15 @@ object Main extends App {
 
       implicit val optionApplicativeInstance: Applicative[Option] = new ApplicativeOption {}
       implicit val listApplicativeInstance: Applicative[List] = new ApplicativeList {}
+
       implicit def stateApplicativeInstance[S]: Applicative[State[S, ?]] = new ApplicativeState[S] {}
+
       implicit def function1ApplicativeInstance[R]: Applicative[R => ?] = new Applicative1Function1[R] {}
+
       implicit def freeApplicativeInstance[G[_]]: Applicative[Free[G, ?]] = new ApplicativeFree[G] {}
 
     }
+
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1791,6 +1800,7 @@ object Main extends App {
   object Validated {
 
     object Instances {
+
       trait FunctorValidated[E] extends Functor[Validated[E, ?]] {
         override def map[A, B](fa: Validated[E, A])(f: A => B): Validated[E, B] = {
           fa match {
@@ -1800,17 +1810,17 @@ object Main extends App {
         }
       }
 
-//      trait MonadValidated[E] extends Monad[Validated[E, ?]]  {
-//        override def point[A](a: A): Validated[E, A] =
-//          Valid(a)
-//
-//        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
-//          fa match {
-//            case Valid(v) => f(v)
-//            case Invalid(e) => Invalid(e) // [sic]
-//          }
-//        }
-//      }
+      //      trait MonadValidated[E] extends Monad[Validated[E, ?]]  {
+      //        override def point[A](a: A): Validated[E, A] =
+      //          Valid(a)
+      //
+      //        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
+      //          fa match {
+      //            case Valid(v) => f(v)
+      //            case Invalid(e) => Invalid(e) // [sic]
+      //          }
+      //        }
+      //      }
 
       implicit def functorValidated[E]: Functor[Validated[E, ?]] = new FunctorValidated[E] {}
 
@@ -1982,4 +1992,229 @@ object Main extends App {
   log(noneOptionSequence)
 
   ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait FreeAp[G[_], A] {
+    self: FreeAp[G, A] =>
+    def foldMap[F[_] : Applicative](nt: G ~> F): F[A] = {
+      self match {
+        case FreeAp.Pure(a) => a.pure[F]
+        case FreeAp.Suspend(ga) => nt(ga)
+        case FreeAp.Ap(ff, fa) =>
+          // HERE BE DRAGONS: This is not stack safe - you have to use a
+          // "Trampoline" because we can't do TCO polymorphically.
+          // DO NOT USE THIS IN PROD
+          ff.foldMap[F](nt).ap(fa.foldMap[F](nt))
+      }
+    }
+  }
+
+  object FreeAp {
+
+    final case class Pure[G[_], A](a: A) extends FreeAp[G, A]
+
+    final case class Suspend[G[_], A](ga: G[A]) extends FreeAp[G, A]
+
+    final case class Ap[G[_], A, B](ff: FreeAp[G, A => B], fa: FreeAp[G, A]) extends FreeAp[G, B]
+
+    def suspend[G[_], A](ga: G[A]): FreeAp[G, A] =
+      Suspend(ga)
+
+    object Instances {
+
+      trait FunctorFreeAp[G[_]] extends Functor[FreeAp[G, ?]] {
+        def map[A, B](fa: FreeAp[G, A])(f: A => B): FreeAp[G, B] = {
+          val ff = Pure(f)
+          Ap(ff, fa)
+        }
+      }
+
+      trait ApplicativeFreeAp[G[_]] extends Applicative[FreeAp[G, ?]] with FunctorFreeAp[G] {
+        override def pure[A](a: A): FreeAp[G, A] =
+          Pure(a)
+
+        override def ap[A, B](ff: FreeAp[G, A => B])(fa: FreeAp[G, A]): FreeAp[G, B] =
+          Ap(ff, fa)
+      }
+
+      implicit def freeApFunctorInstance[G[_]]: Functor[FreeAp[G, ?]] = new FunctorFreeAp[G] {}
+
+      implicit def freeApApplicativeInstance[G[_]]: Applicative[FreeAp[G, ?]] = new ApplicativeFreeAp[G] {}
+    }
+
+  }
+
+  //  trait Matrix {
+  //
+  //  }
+  //
+  //  type CUDAMatrix[A] = List[List[Int]]
+  //  type OpenCLMatrix[A] = List[List[Int]]
+  //
+  //  def cudaIntrinsic(a: CUDAMatrix, b: CUDAMatrix): CUDAMatrix =
+  //    ???
+  //
+  //  def openCLIntrinsic(a: OpenCLMatrix, b: OpenCLMatrix): OpenCLMatrix =
+  //    ???
+  //
+  //  sealed trait MatrixOps[A]
+  //
+  //  object MatrixOps {
+  //    case class FromList(xss: List[List[Int]]) extends MatrixOps[Matrix]
+  //
+  //    // TODO: not strictly correct, need trait bound
+  //    case class Product(a: Matrix, b: Matrix) extends MatrixOps[Matrix]
+  //
+  //    def fromList(xss: List[List[Int]]): FreeAp[MatrixOps, Matrix] =
+  //      FreeAp.suspend(FromList(xss))
+  //
+  //    def product = (a: Matrix, b: Matrix) => FreeAp[MatrixOps, Matrix] =
+  //      FreeAp.Suspend(Product(a, b))
+  //  }
+  //
+  //  val identityMatrix = List(
+  //    List(1, 0),
+  //    List(0, 1),
+  //  )
+  //
+  //
+  //  val genericIdentityMatrix: FreeAp[MatrixOps, Matrix] =
+  //    MatrixOps.fromList(identityMatrix)
+  //
+  //  import FreeAp.Instances._
+  //
+  //  def apProgram: FreeAp[MatrixOps, Matrix] =
+  //    genericIdentityMatrix.map(MatrixOps.product.curried).ap(genericIdentityMatrix)
+  //
+  //
+  //  def prodInterpreterM: MatrixOps ~> CUDAMatrix = new (FileOpM ~> Sync) {
+  //    override def apply[A](fa: FileOpM[A]): Sync[A] =
+  //      fa match {
+  //        case WriteFileM(filename, contents) =>
+  //          IO.Safe.writeFile(filename, contents)
+  //        case ReadFileM(filename) =>
+  //          IO.Safe.readFile(filename)
+  //        case DeleteFileM(filename) =>
+  //          IO.Safe.deleteFile(filename)
+  //      }
+  //  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Lifted from http://dev.stephendiehl.com/fun/002_parsers.html
+  /**
+   * Structurally a parser is a function which takes an input stream of
+   * characters and yields a parse tree by applying the parser logic over
+   * sections of the character stream (called lexemes) to build up a
+   * composite data structure for the AST.
+   */
+  case class Parser[A](parse: String => List[(A, String)]) {
+
+    /**
+     * Running the function will result in traversing the stream of characters
+     * yielding a value of type `A` that usually represents the AST for the
+     * parsed expression, or failing with a parse error for malformed input,
+     * or failing by not consuming the entire stream of input. A more
+     * robust implementation would track the position information of failures
+     * for error reporting.
+     */
+    def run(stream: String): Either[String, A] = {
+      parse(stream) match {
+        case List((res, "")) =>
+          Right(res)
+        case List((_, rs)) =>
+          Left(s"Parser did not consume entire stream. Remaining: $rs")
+        case _ =>
+          Left("Parser error")
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  object Parser {
+
+    /**
+     * We advance the parser by extracting a single character from the parser
+     * stream and returning in a tuple containing itself and the rest of the
+     * stream. The parser logic will then scrutinize the character and either
+     * transform it in some portion of the output or advance the stream and
+     * proceed.
+     *
+     * @return
+     */
+    def item: Parser[Char] = Parser {
+      case "" => List.empty
+      case xs => List((xs.head, xs.tail))
+    }
+
+    object Instances {
+
+      trait FunctorParser extends Functor[Parser] {
+        override def map[A, B](fa: Parser[A])(f: A => B): Parser[B] =
+          Parser { s =>
+            for {
+              (a, rs) <- fa.parse(s)
+            } yield (f(a), rs)
+          }
+      }
+
+      trait ApplicativeParser extends Applicative[Parser] with FunctorParser {
+        override def pure[A](a: A): Parser[A] =
+          Parser { s => List((a, s)) }
+
+        override def ap[A, B](ff: Parser[A => B])(fa: Parser[A]): Parser[B] =
+          Parser { s =>
+            for {
+              (f, s1) <- ff.parse(s) // consume some of the stream
+              (a, s2) <- fa.parse(s1) // consume some more of the stream
+            } yield (f(a), s2)
+          }
+      }
+
+      trait MonadParser extends Monad[Parser] with ApplicativeParser {
+        /**
+         * The unit operation injects a single pure value as the result,
+         * without reading from the parse stream.
+         */
+        override def point[A](a: A): Parser[A] =
+          Parser { s => List((a, s)) }
+
+        /**
+         * A bind operation for our parser type will take one parse operation
+         * and compose it over the result of second parse function. Since the
+         * parser operation yields a list of tuples, composing a second parser
+         * function simply maps itself over the resulting list and concat's the
+         * resulting nested list of lists into a single flat list in the usual
+         * list monad fashion. The unit operation injects a single pure value as
+         * the result, without reading from the parse stream.
+         */
+        override def flatMap[A, B](fa: Parser[A])(f: A => Parser[B]): Parser[B] =
+          Parser { s =>
+            fa.parse(s).flatMap { (a: A, s1: String) =>
+              val fb = f(a).parse(s1)
+              fb
+            }
+          }
+      }
+
+    }
+
+    /**
+     * Of particular importance is that this particular monad has
+     * a zero value (`failure`), namely the function which halts reading the
+     * stream and returns the empty stream.
+     */
+    def failure[A]: Parser[A] =
+      Parser { cs => List.empty }
+
+    /**
+    * Together this forms a monoidal structure with a secondary operation
+     * (`combine`) which applies two parser functions over the same stream and
+     * concatenates the result.
+     */
+    def combine[A](p: Parser[A], q: Parser[A]): Parser[A] =
+      Parser { s => p.parse(s) ++ q.parse(s) }
+
+  }
 }
