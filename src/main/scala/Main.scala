@@ -1,5 +1,9 @@
 import java.io.{File, PrintWriter}
 
+import Main.Applicative.Instances.ApplicativeState
+import Main.Free.FlatMapped
+import Main.MoreSyncInstances.ApplicativeSync
+
 import scala.concurrent.Future
 import scala.io.Source
 import pprint.log
@@ -39,8 +43,8 @@ object Main extends App {
     log(animal.sound)
   }
 
-//   makeSound(Cat("Spock")) // meow
-//   makeSound(Dog()) // woof
+  //   makeSound(Cat("Spock")) // meow
+  //   makeSound(Dog()) // woof
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -283,7 +287,7 @@ object Main extends App {
   }
 
   // don't have to construct StaticCat - is global
-  log(StaticCat.sound)  // static: meow
+  log(StaticCat.sound) // static: meow
 
   log(implicitly[Cat].sound) // static: meow
 
@@ -294,16 +298,17 @@ object Main extends App {
   // They have a bunch of weird rules that you should probably read about
   // https://docs.scala-lang.org/overviews/core/implicit-classes.htmlz
 
-    object IntSyntax {
-      implicit class IntExtensions(private val self: Int) extends AnyVal {
-        def increment(): Int = self + 1
-      }
+  object IntSyntax {
 
+    implicit class IntExtensions(private val self: Int) extends AnyVal {
+      def increment(): Int = self + 1
     }
+
+  }
 
   import IntSyntax._
 
-   log(5.increment()) // 6
+  log(5.increment()) // 6
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -607,7 +612,6 @@ object Main extends App {
       }
 
       implicit val listFunctorInstance: Functor[List] = new FunctorList {}
-
       implicit val optionFunctorInstance: Functor[Option] = new FunctorOption {}
     }
 
@@ -697,9 +701,10 @@ object Main extends App {
   // DOCUMENTATION:
   // https://typelevel.org/cats/typeclasses/monad.html
 
-  trait Monad[F[_]] extends Functor[F] {
-    self: Functor[F] =>
-    def point[A](a: A): F[A]
+  trait Monad[F[_]] extends Applicative[F] {
+    self: Applicative[F] =>
+    def point[A](a: A): F[A] =
+      pure(a)
 
     // you only have to implement one or the other, as each can be derived from each others impl
     def flatten[A](ffa: F[F[A]]): F[A] =
@@ -733,18 +738,20 @@ object Main extends App {
 
     }
 
-
     object Instances {
+      import Applicative.Instances._
 
-      trait MonadList extends Monad[List] with FunctorList {
-        override def point[A](a: A): List[A] = List(a)
+      trait MonadList extends Monad[List] with ApplicativeList {
+        override def point[A](a: A): List[A] =
+          List(a)
 
         override def flatten[A](ffa: List[List[A]]): List[A] =
           ffa.flatten
       }
 
-      trait MonadOption extends Monad[Option] with FunctorOption {
-        def point[A](a: A): Option[A] = Some(a)
+      trait MonadOption extends Monad[Option] with ApplicativeOption {
+        override def point[A](a: A): Option[A] =
+          Some(a)
 
         override def flatten[A](ffa: Option[Option[A]]): Option[A] = ffa match {
           // unwrap unwrap      rewrap
@@ -754,7 +761,6 @@ object Main extends App {
       }
 
       implicit val optionMonadInstance: Monad[Option] = new MonadOption {}
-
       implicit val listMonadInstance: Monad[List] = new MonadList {}
     }
 
@@ -841,8 +847,9 @@ object Main extends App {
         def map[A, B](fa: Sync[A])(f: A => B): Sync[B] = Sync.suspend(f(fa.unsafeInterpret()))
       }
 
-      trait MonadSync extends Monad[Sync] with FunctorSync {
-        def point[A](a: A): Sync[A] = Sync.suspend(a)
+      trait MonadSync extends Monad[Sync] with ApplicativeSync {
+        override def point[A](a: A): Sync[A] =
+          Sync.suspend(a)
 
         override def flatten[A](ffa: Sync[Sync[A]]): Sync[A] =
         //                      unwrap unwrap
@@ -979,8 +986,10 @@ object Main extends App {
 
   object Function1MonadInstances {
 
-    trait MonadFunction1[R] extends Monad[R => ?] with FunctorFunction1[R] {
-      def point[A](a: A): R => A =
+    import Applicative.Instances._
+
+    trait MonadFunction1[R] extends Monad[R => ?] with Applicative1Function1[R] {
+      override def point[A](a: A): R => A =
         (_: R) => a
 
       override def flatMap[A, B](fa: R => A)(f: A => (R => B)): R => B = { r: R =>
@@ -1029,8 +1038,8 @@ object Main extends App {
           }) // rewrap
       }
 
-      trait MonadState[S] extends Monad[State[S, ?]] with FunctorState[S] {
-        def point[A](a: A): State[S, A] =
+      trait MonadState[S] extends Monad[State[S, ?]] with ApplicativeState[S] {
+        override def point[A](a: A): State[S, A] =
           State(s => (s, a))
 
         override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] =
@@ -1042,7 +1051,6 @@ object Main extends App {
       }
 
       implicit def stateFunctorInstance[S]: Functor[State[S, ?]] = new FunctorState[S] {}
-
       implicit def stateMonadInstance[S]: Monad[State[S, ?]] = new MonadState[S] {}
     }
 
@@ -1115,18 +1123,29 @@ object Main extends App {
       }
 
       implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
-        // Have to duplicate :(
-        def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
-          Kleisli(rfa.run.map(fa => fa.map(f)))
-        }
 
-        def point[A](a: A): Kleisli[F, R, A] =
+        override def point[A](a: A): Kleisli[F, R, A] =
           Kleisli(a.point[F].point[R => ?])
 
         override def flatten[A](ffa: Kleisli[F, R, Kleisli[F, R, A]]): Kleisli[F, R, A] =
         //              unwrap                unwrap
         // rewrap
           Kleisli(r => ffa.run(r).flatMap(fa => fa.run(r)))
+
+        // ### UGLY HACK BELOW HERE PLEASE IGNORE ME ###
+        override def pure[A](a: A): Kleisli[F, R, A] = point(a)
+
+        override def ap[A, B](ff: Kleisli[F, R, A => B])(fa: Kleisli[F, R, A]): Kleisli[F, R, B] = {
+          flatMap(ff)((f: A => B) =>
+            flatMap(fa)((a: A) =>
+              point[B](f(a))
+            )
+          )
+        }
+
+        def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
+          Kleisli(rfa.run.map(fa => fa.map(f)))
+        }
       }
     }
 
@@ -1276,9 +1295,7 @@ object Main extends App {
       }
 
       implicit def listSemigroupInstance[A]: Semigroup[List[A]] = new SemigroupList[A] {}
-
       implicit def sumSemigroupInstance[A]: Semigroup[Int] = new SemigroupSum {}
-
       implicit def mapRightBiasSemigroupInstance[K, V]: Semigroup[Map[K, V]] = new SemigroupRightBiasMap[K, V] {}
     }
 
@@ -1307,9 +1324,7 @@ object Main extends App {
       }
 
       implicit def listMonoidInstance[A]: Monoid[List[A]] = new MonoidList[A] {}
-
       implicit def sumMonoidInstance: Monoid[Int] = new MonoidSum {}
-
       implicit def mapRightBiasMonoidInstance[K, V]: Monoid[Map[K, V]] = new MonoidRightBiasMap[K, V] {}
 
     }
@@ -1481,15 +1496,16 @@ object Main extends App {
           freeMonadInstance.flatMap(fa)(a => Point(f(a)))
       }
 
-      trait MonadFree[G[_]] extends Monad[Free[G, ?]] with FunctorFree[G] {
-        def point[A](a: A): Free[G, A] = Point(a)
+      import Applicative.Instances._
+
+      trait MonadFree[G[_]] extends Monad[Free[G, ?]] with ApplicativeFree[G] {
+        override def point[A](a: A): Free[G, A] = Point(a)
 
         override def flatMap[A, B](fa: Free[G, A])(f: A => Free[G, B]): Free[G, B] =
           FlatMapped(fa, f)
       }
 
       implicit def freeFunctorInstance[G[_]]: Functor[Free[G, ?]] = new FunctorFree[G] {}
-
       implicit def freeMonadInstance[G[_]]: Monad[Free[G, ?]] = new MonadFree[G] {}
     }
 
@@ -1694,9 +1710,9 @@ object Main extends App {
     }
 
     object Instances {
-
       trait ApplicativeOption extends Applicative[Option] with FunctorOption {
-        override def pure[A](a: A): Option[A] = Some(a)
+        override def pure[A](a: A): Option[A] =
+          Some(a)
 
         override def ap[A, B](ff: Option[A => B])(fa: Option[A]): Option[B] =
           (ff, fa) match {
@@ -1705,22 +1721,61 @@ object Main extends App {
           }
       }
 
-      implicit val optionApplicative: Applicative[Option] = new ApplicativeOption {}
-    }
+      trait ApplicativeList extends Applicative[List] with FunctorList {
+        override def pure[A](a: A): List[A] =
+          List(a)
 
-    object Utils {
-      def deriveApplicative[F[_]: Monad]() = new Applicative[F] {
-        def map[A, B](fa: F[A])(f: A => B): F[B] =
-          fa.map(f)
-
-        def pure[A](a: A): F[A] =
-          a.point[F]
-
-        override def ap[A, B](ff: F[A => B])(fa: F[A]): F[B] = for {
-          f <- ff
-          a <- fa
-        } yield f(a)
+        override def ap[A, B](ff: List[A => B])(fa: List[A]): List[B] =
+          for {
+            f <- ff
+            a <- fa
+          } yield f(a)
       }
+
+      trait ApplicativeState[S] extends Applicative[State[S, ?]] with FunctorState[S] {
+        override def pure[A](a: A): State[S, A] =
+          State(s => (s, a))
+
+        override def ap[A, B](ff: State[S, A => B])(fa: State[S, A]): State[S, B] =
+          State(s => {
+            val (sp, f) = ff.run(s) // unwrap
+            val (spp, a) = fa.run(sp) // unwrap
+            (spp, f(a)) // rewrap
+          })
+      }
+
+      trait Applicative1Function1[R] extends Applicative[R => ?] with FunctorFunction1[R] {
+        override def pure[A](a: A): R => A =
+          (_: R) => a
+
+
+        override def ap[A, B](ff: R => A => B)(fa: R => A): R => B = { r: R =>
+          val f: A => B = ff(r) // unwrap
+          val a: A = fa(r) // unwrap
+          val b: B = f(a) // apply
+          b
+        }
+      }
+
+      trait ApplicativeFree[G[_]] extends Applicative[Free[G,  ?]] with FunctorFree[G] {
+        override def pure[A](a: A): Free[G, A] = Free.Point(a)
+
+        // this is a lot of overhead just to Applicative operations on Free.
+        // maybe there's some other sort of structure that can help us here...
+        override def ap[A, B](ff: Free[G, A => B])(fa: Free[G, A]): Free[G, B] =
+          Free.FlatMapped(ff, (f: A => B) =>
+            Free.FlatMapped(fa, (a: A) =>
+              Free.Point(f(a))
+            )
+          )
+      }
+
+      implicit val optionApplicativeInstance: Applicative[Option] = new ApplicativeOption {}
+      implicit val listApplicativeInstance: Applicative[List] = new ApplicativeList {}
+      implicit def stateApplicativeInstance[S]: Applicative[State[S, ?]] = new ApplicativeState[S] {}
+      implicit def function1ApplicativeInstance[R]: Applicative[R => ?] = new Applicative1Function1[R] {}
+      implicit def freeApplicativeInstance[G[_]]: Applicative[Free[G, ?]] = new ApplicativeFree[G] {}
+
     }
   }
 
@@ -1736,7 +1791,6 @@ object Main extends App {
   object Validated {
 
     object Instances {
-
       trait FunctorValidated[E] extends Functor[Validated[E, ?]] {
         override def map[A, B](fa: Validated[E, A])(f: A => B): Validated[E, B] = {
           fa match {
@@ -1746,20 +1800,19 @@ object Main extends App {
         }
       }
 
-      trait MonadValidated[E] extends Monad[Validated[E, ?]] with FunctorValidated[E] {
-        override def point[A](a: A): Validated[E, A] = Valid(a)
-
-        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
-          fa match {
-            case Valid(v) => f(v)
-            case Invalid(e) => Invalid(e) // [sic]
-          }
-        }
-      }
+//      trait MonadValidated[E] extends Monad[Validated[E, ?]]  {
+//        override def point[A](a: A): Validated[E, A] =
+//          Valid(a)
+//
+//        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
+//          fa match {
+//            case Valid(v) => f(v)
+//            case Invalid(e) => Invalid(e) // [sic]
+//          }
+//        }
+//      }
 
       implicit def functorValidated[E]: Functor[Validated[E, ?]] = new FunctorValidated[E] {}
-
-      implicit def monadValidated[E]: Monad[Validated[E, ?]] = new MonadValidated[E] {}
 
       // HIDE ME
       implicit def applicativeValidated[E: Semigroup]: Applicative[Validated[E, ?]] = new Applicative[Validated[E, ?]] with FunctorValidated[E] {
@@ -1896,7 +1949,7 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  val metadataSequence = List(
+  val metadataSequence: Sync[List[String]] = List(
     "README.md",
     "LICENSE"
   ).map(IO.Safe.readFile).sequenceAL()
@@ -1905,10 +1958,7 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit def applicativeState[S]: Applicative[State[S, ?]] =
-    Applicative.Utils.deriveApplicative[State[S, ?]]()
-
-  val stateSequence = List(
+  val stateSequence: State[Int, List[Unit]] = List(
     State.put[Int](0),
     State.modify[Int](_ + 1)
   ).sequenceAL()
@@ -1917,8 +1967,19 @@ object Main extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  log(List(Some(5), None, Some(7)).sequenceAL())
+  val someOptionSequence: Option[List[Int]] = List(
+    Some(5).asInstanceOf[Option[Int]], // need to widen the type to make the syntax work
+    Some(6),
+    Some(7)
+  ).sequenceAL()
+
+  val noneOptionSequence: Option[List[Int]] = List(
+    Some(5),
+    None,
+    Some(7)
+  ).sequenceAL()
+
+  log(noneOptionSequence)
 
   ///////////////////////////////////////////////////////////////////////////////
-
-
+}
