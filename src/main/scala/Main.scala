@@ -2401,6 +2401,10 @@ object Main extends App {
    * mulop  = "*".
    */
 
+  /**
+  * The direct translation to Scala in terms of our newly constructed parser
+   * combinator has the following form:
+   */
   object Calculator {
 
     import Parser._
@@ -2456,6 +2460,9 @@ object Main extends App {
       expr.run(s).map(eval)
   }
 
+  /**
+   * Now we can try out our little parser.
+   */
   log(Calculator("1+1")) // 2
-  log(Calculator("(1+2)*(3-(-4+5))")) // 6
+  log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
 }
