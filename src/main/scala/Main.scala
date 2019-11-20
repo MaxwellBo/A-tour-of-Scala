@@ -2316,7 +2316,7 @@ object Main extends App {
     def oneOf(s: List[Char]): Parser[Char] =
       satisfy(s.contains)
 
-    def chainl[A](p: => Parser[A])(op: => Parser[A => A => A])(a: A): Parser[A] = {
+    def chainl[A](p: Parser[A])(op: Parser[A => A => A])(a: A): Parser[A] = {
       chainl1(p)(op) <|> a.pure[Parser]
     }
 
@@ -2325,7 +2325,7 @@ object Main extends App {
      * returns a value obtained by a recursing until failure on the left hand
      * side of the stream. This can be used to parse left-recursive grammar.
      */
-    def chainl1[A](p: => Parser[A])(op: => Parser[A => A => A]): Parser[A] = {
+    def chainl1[A](p: Parser[A])(op: Parser[A => A => A]): Parser[A] = {
       // If you think I understand how this works, you'd be sorely mistaken
       def rest(a: A): Parser[A] = (for {
         f <- op
@@ -2380,7 +2380,7 @@ object Main extends App {
       cs <- Alternative.some(digit)
     } yield (s + cs.mkString).toInt
 
-    def parens[A](m: => Parser[A]): Parser[A] = for {
+    def parens[A](m: Parser[A]): Parser[A] = for {
      _ <- reserved("(")
      n <- m
      _ <- reserved(")")
