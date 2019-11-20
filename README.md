@@ -29,28 +29,30 @@ So far, it has from-scratch, simplistic^ reimplementations of
 - `State`
 - `Kleisli/ReaderT`
 - `Free`
+- `Applicative` 
+- `FreeAp`
+- Parser combinators
 
 ### ...and given lectures about it! 
 
 - I forgot to record Part 1
 - [Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
 - [Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
+- Part 4 has yet to be recorded
 
 ---
  
 This project is _not_ an attempt to teach functional programming from the ground up^^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of example code and demos, where all abstractions can be copy-pasted into the snippet or Gist after a couple `Go to definition`s.
 
 
-^ I've had to make some things simpler at the cost of expressiveness. An example includes `Monad` not extending `Functor`, but requiring `Functor` as a `implicit def`. This isn't the "correct" way to do things. 
+^ I've had to make some things simpler at the cost of expressiveness. An example includes `Alternative` not extending `Applicative` to prevent implicit resolution clashes. There are ways to prevent this from happening, but it's out of scope for this kind of tutorial. 
 
 ^^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/), or the QFPL [Functional Programming](https://github.com/data61/fp-course) + [Applied Functional Programming](https://github.com/qfpl/applied-fp-course) courses.
 
 ## What's next?
 
 - Lenses
-- Parser combinators
 - More monad transformers
-- Free applicatives
 
 ## Contributing
 
