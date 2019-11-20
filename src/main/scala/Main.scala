@@ -1029,6 +1029,8 @@ object Main extends App {
 
     object Instances {
 
+      import Applicative.Instances.ApplicativeState
+
       trait FunctorState[S] extends Functor[State[S, ?]] {
         def map[A, B](fa: State[S, A])(f: A => B): State[S, B] =
           State(s => {
@@ -2025,8 +2027,8 @@ object Main extends App {
 
       trait FunctorFreeAp[G[_]] extends Functor[FreeAp[G, ?]] {
         def map[A, B](fa: FreeAp[G, A])(f: A => B): FreeAp[G, B] = {
-          val ff = Pure(f)
-          Ap(ff, fa)
+          val ff = Pure[G, A => B](f)
+          Ap[G, A, B](ff, fa)
         }
       }
 
@@ -2102,10 +2104,9 @@ object Main extends App {
   /**
    * A monoid on applicative functors.
    */
-  trait Alternative[F[_]] extends Applicative[F] {
+  trait Alternative[F[_]] { // should extend Applicative, but we don't because of implicit clashes
     def empty[A]: F[A]
     def <|>[A](pa: F[A])(qa: F[A]): F[A]
-
   }
 
   object Alternative {
@@ -2119,14 +2120,14 @@ object Main extends App {
      * the function fails and then yields the collected results up to that
      * point.
      */
-    def many[F[_]: Alternative, A](v: F[A]): F[List[A]] = {
+    def many[F[_]: Alternative: Applicative, A](v: F[A]): F[List[A]] = {
       some(v) <|> List.empty[A].pure[F]
     }
 
     /**
      * The `some` function behaves similar except that it will fail itself if
      */
-    def some[F[_]: Alternative, A](v: F[A]): F[List[A]] = {
+    def some[F[_]: Alternative: Applicative, A](v: F[A]): F[List[A]] = {
       def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
         xs.prepended(x)
 
@@ -2232,8 +2233,8 @@ object Main extends App {
          */
         override def flatMap[A, B](fa: Parser[A])(f: A => Parser[B]): Parser[B] =
           Parser { s =>
-            fa.parse(s).flatMap { (a: A, s1: String) =>
-              val fb = f(a).parse(s1)
+            fa.parse(s).flatMap { case (a: A, s1: String) =>
+              val fb: List[(B, String)] = f(a).parse(s1)
               fb
             }
           }
@@ -2276,7 +2277,7 @@ object Main extends App {
        * logic for trying multiple parse functions over the same stream and
        * handling failure and rollover.
        */
-      trait AlternativeParser extends Alternative[Parser] with ApplicativeParser {
+      trait AlternativeParser extends Alternative[Parser] {
         override def empty[A]: Parser[A] =
           failure[A]
 
@@ -2453,5 +2454,6 @@ object Main extends App {
       expr.run(s).map(eval)
   }
 
-  log(Calculator("(1 + 2) * (3 - (-4 + 5))")) // 6
+  log(Calculator("(1 + 2)")) // 6
+//  log(Calculator("(1 + 2) * (3 - (-4 + 5))")) // 6
 }
