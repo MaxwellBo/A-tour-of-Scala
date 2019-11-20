@@ -840,6 +840,8 @@ object Main extends App {
 
     object Instances {
 
+      import MoreSyncInstances._
+
       trait FunctorSync extends Functor[Sync] {
         def map[A, B](fa: Sync[A])(f: A => B): Sync[B] = Sync.suspend(f(fa.unsafeInterpret()))
       }
@@ -2047,59 +2049,100 @@ object Main extends App {
   //
   //  }
   //
-  //  type CUDAMatrix[A] = List[List[Int]]
-  //  type OpenCLMatrix[A] = List[List[Int]]
-  //
-  //  def cudaIntrinsic(a: CUDAMatrix, b: CUDAMatrix): CUDAMatrix =
-  //    ???
-  //
-  //  def openCLIntrinsic(a: OpenCLMatrix, b: OpenCLMatrix): OpenCLMatrix =
-  //    ???
-  //
-  //  sealed trait MatrixOps[A]
-  //
-  //  object MatrixOps {
-  //    case class FromList(xss: List[List[Int]]) extends MatrixOps[Matrix]
-  //
-  //    // TODO: not strictly correct, need trait bound
-  //    case class Product(a: Matrix, b: Matrix) extends MatrixOps[Matrix]
-  //
-  //    def fromList(xss: List[List[Int]]): FreeAp[MatrixOps, Matrix] =
-  //      FreeAp.suspend(FromList(xss))
-  //
-  //    def product = (a: Matrix, b: Matrix) => FreeAp[MatrixOps, Matrix] =
-  //      FreeAp.Suspend(Product(a, b))
-  //  }
-  //
-  //  val identityMatrix = List(
-  //    List(1, 0),
-  //    List(0, 1),
-  //  )
-  //
-  //
-  //  val genericIdentityMatrix: FreeAp[MatrixOps, Matrix] =
-  //    MatrixOps.fromList(identityMatrix)
-  //
-  //  import FreeAp.Instances._
-  //
-  //  def apProgram: FreeAp[MatrixOps, Matrix] =
-  //    genericIdentityMatrix.map(MatrixOps.product.curried).ap(genericIdentityMatrix)
-  //
-  //
-  //  def prodInterpreterM: MatrixOps ~> CUDAMatrix = new (FileOpM ~> Sync) {
-  //    override def apply[A](fa: FileOpM[A]): Sync[A] =
-  //      fa match {
-  //        case WriteFileM(filename, contents) =>
-  //          IO.Safe.writeFile(filename, contents)
-  //        case ReadFileM(filename) =>
-  //          IO.Safe.readFile(filename)
-  //        case DeleteFileM(filename) =>
-  //          IO.Safe.deleteFile(filename)
-  //      }
-  //  }
+//    type CUDAMatrix[A] = Any
+//    type OpenCLMatrix[A] = Any
+//
+//    def cudaIntrinsic(a: CUDAMatrix, b: CUDAMatrix): CUDAMatrix =
+//      ???
+//
+//    def openCLIntrinsic(a: OpenCLMatrix, b: OpenCLMatrix): OpenCLMatrix =
+//      ???
+//
+//    sealed trait MatrixOps[A]
+//
+//    object MatrixOps {
+//      case class FromList[A](xss: List[List[A]]) extends MatrixOps[Matrix]
+//
+//      // TODO: not strictly correct, need trait bound
+//      case class Product(a: Matrix, b: Matrix) extends MatrixOps[Matrix]
+//
+//      def fromList(xss: List[List[Int]]): FreeAp[MatrixOps, Matrix] =
+//        FreeAp.suspend(FromList(xss))
+//
+//      def product = (a: Matrix, b: Matrix) => FreeAp[MatrixOps, Matrix] =
+//        FreeAp.Suspend(Product(a, b))
+//    }
+//
+//    val identityMatrix = List(
+//      List(1, 0),
+//      List(0, 1),
+//    )
+//
+//
+//    val genericIdentityMatrix: FreeAp[MatrixOps, Matrix] =
+//      MatrixOps.fromList(identityMatrix)
+//
+//    import FreeAp.Instances._
+//
+//    def apProgram: FreeAp[MatrixOps, Matrix] =
+//      genericIdentityMatrix.map(MatrixOps.product.curried).ap(genericIdentityMatrix)
+//
+//
+//    def cudaInterpreter: MatrixOps ~> CUDAMatrix = new (MatrixOps ~> CUDAMatrix) {
+//      override def apply[A](fa: MatrixOps[A]): CUDAMatrix[A] =
+//        fa match {
+//          case MatrixOps.FromList(xss) =>
+//          case MatrixOps.Product(a, b) => a.C
+//        }
+//    }
 
 
   ///////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * A monoid on applicative functors.
+   */
+  trait Alternative[F[_]] extends Applicative[F] {
+    def empty[A]: F[A]
+    def <|>[A](pa: F[A])(qa: F[A]): F[A]
+
+  }
+
+  object Alternative {
+    import Syntax._
+
+    def empty[F[_]: Alternative, A]: F[A] =
+      implicitly[Alternative[F]].empty[A]
+
+    /**
+     * `many` takes a single function argument and repeatedly applies it until
+     * the function fails and then yields the collected results up to that
+     * point.
+     */
+    def many[F[_]: Alternative, A](v: F[A]): F[List[A]] = {
+      some(v) <|> List.empty[A].pure[F]
+    }
+
+    /**
+     * The `some` function behaves similar except that it will fail itself if
+     */
+    def some[F[_]: Alternative, A](v: F[A]): F[List[A]] = {
+      def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
+        xs.prepended(x)
+
+      v.map(prepend).ap(many(v))
+    }
+
+    object Syntax {
+      implicit class AlternativeIdSyntax[F[_], A](val here: F[A]) extends AnyVal {
+        def <|>(there: F[A])(implicit instance: Alternative[F]): F[A] = {
+          instance.<|>(here)(there)
+        }
+      }
+    }
+  }
+
+  import Alternative.Syntax._
 
   // Lifted from http://dev.stephendiehl.com/fun/002_parsers.html
   /**
@@ -2140,8 +2183,6 @@ object Main extends App {
      * stream. The parser logic will then scrutinize the character and either
      * transform it in some portion of the output or advance the stream and
      * proceed.
-     *
-     * @return
      */
     def item: Parser[Char] = Parser {
       case "" => List.empty
@@ -2198,6 +2239,9 @@ object Main extends App {
           }
       }
 
+      implicit val parserFunctorInstance: Functor[Parser] = new FunctorParser {}
+      implicit val parserApplicativeInstance: Applicative[Parser] = new ApplicativeParser {}
+      implicit val parserMonadInstance: Monad[Parser] = new MonadParser {}
     }
 
     /**
@@ -2213,8 +2257,201 @@ object Main extends App {
      * (`combine`) which applies two parser functions over the same stream and
      * concatenates the result.
      */
-    def combine[A](p: Parser[A], q: Parser[A]): Parser[A] =
-      Parser { s => p.parse(s) ++ q.parse(s) }
+    def combine[A](pa: Parser[A], qa: Parser[A]): Parser[A] =
+      Parser { s => pa.parse(s) ++ qa.parse(s) }
 
+    def option[A](pa: Parser[A], qa: Parser[A]): Parser[A] =
+      Parser { s =>
+        pa.parse(s) match {
+          case Nil => qa.parse(s)
+          case res => res
+        }
+      }
+
+    object MoreInstances {
+      import Instances._
+
+      /**
+       * This gives rise to the Alternative class instance which encodes the
+       * logic for trying multiple parse functions over the same stream and
+       * handling failure and rollover.
+       */
+      trait AlternativeParser extends Alternative[Parser] with ApplicativeParser {
+        override def empty[A]: Parser[A] =
+          failure[A]
+
+        override def <|>[A](pa: Parser[A])(qa: Parser[A]): Parser[A] =
+          option(pa, qa)
+      }
+
+      implicit val parserAlternativeInstance: Alternative[Parser] = new AlternativeParser {}
+    }
+
+    import Instances._
+    import MoreInstances._
+
+    /**
+     * On top of this we can add functionality for checking whether the current
+     * character in the stream matches a given predicate ( i.e is it a digit,
+     * is it a letter, a specific word, etc).
+     */
+    def satisfy(p: Char => Boolean): Parser[Char] =
+      item.flatMap { c =>
+        if (p(c)) {
+          c.pure[Parser]
+        } else {
+          Parser.failure
+        }
+      }
+
+    /**
+     * Essentially this 50 lines code encodes the entire core of the parser
+     * combinator machinery. All higher order behavior can be written on top of
+     * just this logic. Now we can write down several higher level functions
+     * which operate over sections of the stream.
+     */
+    def oneOf(s: List[Char]): Parser[Char] =
+      satisfy(s.contains)
+
+    def chainl[A](p: Parser[A])(op: Parser[A => A => A])(a: A): Parser[A] = {
+      chainl1(p)(op) <|> a.pure[Parser]
+    }
+
+    /**
+     * `chainl1` parses one or more occurrences of p, separated by op and
+     * returns a value obtained by a recursing until failure on the left hand
+     * side of the stream. This can be used to parse left-recursive grammar.
+     */
+    def chainl1[A](p: Parser[A])(op: Parser[A => A => A]): Parser[A] = {
+      // If you think I understand how this works, you'd be sorely mistaken
+      def rest(a: A): Parser[A] = (for {
+        f <- op
+        b <- p
+        res <- rest(f(a)(b))
+      } yield res) <|> a.pure[Parser]
+
+      for {
+        a <- p
+        res <- rest(a)
+      } yield res
+    }
+
+    /**
+     * Using satisfy we can write down several combinators for detecting the
+     * presence of specific common patterns of characters (numbers,
+     * parenthesized expressions, whitespace, etc).
+     */
+
+    def char(c: Char): Parser[Char] =
+      satisfy(_ == c)
+
+    def spaces: Parser[String] =
+      Alternative.many(oneOf(List('\n', '\r'))).map(_.mkString)
+
+    def string(ccs: String): Parser[String] =
+      ccs match {
+        case "" => "".pure[Parser]
+        case cs => for {
+          _ <- char(cs.head)
+          _ <- string(cs.tail)
+        } yield cs
+      }
+
+    def token[A](p: Parser[A]): Parser[A] = for {
+      a <- p
+      _ <- spaces
+    } yield a
+
+    def reserved(s: String): Parser[String] =
+      token(string(s))
+
+
+    def digit: Parser[Char] =
+      satisfy(_.isDigit)
+
+    def natural: Parser[Int] =
+      Alternative.some(digit).map(_.mkString.toInt)
+
+    def number: Parser[Int] = for {
+      s <- string("-") <|> string("")
+      cs <- Alternative.some(digit)
+    } yield (s + cs).toInt
+
+    def parens[A](m: Parser[A]): Parser[A] = for {
+     _ <- reserved("(")
+     n <- m
+     _ <- reserved(")")
+    } yield n
   }
+
+  /**
+   * And that's about it! In a few hundred lines we have enough of a parser
+   * library to write down a simple parser for a calculator grammar. In the
+   * formal Backus–Naur Form our grammar would be written as:
+   *
+   * number = [ "-" ] digit { digit }.
+   * digit  = "0" | "1" | ... | "8" | "9".
+   * expr   = term { addop term }.
+   * term   = factor { mulop factor }.
+   * factor = "(" expr ")" | number.
+   * addop  = "+" | "-".
+   * mulop  = "*".
+   */
+
+  object Calculator {
+
+    import Parser._
+    import Parser.Instances._
+    import Parser.MoreInstances._
+    import Alternative.Syntax._
+
+    sealed trait Expr
+
+    case class Add(a: Expr, b: Expr) extends Expr
+
+    case class Mul(a: Expr, b: Expr) extends Expr
+
+    case class Sub(a: Expr, b: Expr) extends Expr
+
+    case class Lit(n: Int) extends Expr
+
+    def eval(ex: Expr): Int = ex match {
+      case Add(a, b) => eval(a) + eval(b)
+      case Mul(a, b) => eval(a) * eval(b)
+      case Sub(a, b) => eval(a) - eval(b)
+      case Lit(n) => n
+    }
+
+    def int: Parser[Expr] = for {
+      n <- number
+    } yield Lit(n)
+
+    def expr: Parser[Expr] =
+      chainl1(term)(addop)
+
+    def term: Parser[Expr] =
+      chainl1(factor)(mulop)
+
+    def factor: Parser[Expr] =
+      int <|> parens(expr)
+
+    def infixOp[A](x: String, f: A => A => A): Parser[A => A => A] = for {
+      _ <- reserved(x)
+    } yield f
+
+    def addop: Parser[Expr => Expr => Expr] = {
+      val add: Expr => Expr => Expr = (Add(_, _)).curried
+      val sub: Expr => Expr => Expr = (Sub(_, _)).curried
+
+      infixOp("+", add) <|> infixOp("-", sub)
+    }
+
+    def mulop: Parser[Expr => Expr => Expr] =
+      infixOp("*", (Mul(_, _)).curried)
+
+    def apply(s: String): Either[String, Int] =
+      expr.run(s).map(eval)
+  }
+
+  log(Calculator("(1 + 2) * (3 - (-4 + 5))")) // 6
 }
