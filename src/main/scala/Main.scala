@@ -1137,7 +1137,7 @@ object Main extends App {
         // ### UGLY HACK BELOW HERE PLEASE IGNORE ME ###
         override def pure[A](a: A): Kleisli[F, R, A] = point(a)
 
-        override def ap[A, B](ff: Kleisli[F, R, A => B])(fa: Kleisli[F, R, A]): Kleisli[F, R, B] = {
+        override def ap[A, B](ff: => Kleisli[F, R, A => B])(fa: => Kleisli[F, R, A]): Kleisli[F, R, B] = {
           flatMap(ff)((f: A => B) =>
             flatMap(fa)((a: A) =>
               point[B](f(a))
@@ -1684,7 +1684,7 @@ object Main extends App {
     def pure[A](a: A): F[A]
 
     // can define one or the other
-    def ap[A, B](ff: F[A => B])(fa: F[A]): F[B] = {
+    def ap[A, B](ff: => F[A => B])(fa: => F[A]): F[B] = {
       val apply =
         (f: A => B) => (a: A) => f(a)
 
@@ -1710,7 +1710,7 @@ object Main extends App {
       }
 
       implicit class ApplicativeExtensions[F[_], A, B](private val self: F[A => B]) extends AnyVal {
-        def ap(fa: F[A])(implicit instance: Applicative[F]): F[B] = {
+        def ap(fa: => F[A])(implicit instance: Applicative[F]): F[B] = {
           instance.ap(self)(fa)
         }
       }
@@ -1723,7 +1723,7 @@ object Main extends App {
         override def pure[A](a: A): Option[A] =
           Some(a)
 
-        override def ap[A, B](ff: Option[A => B])(fa: Option[A]): Option[B] =
+        override def ap[A, B](ff: => Option[A => B])(fa: => Option[A]): Option[B] =
           (ff, fa) match {
             case (Some(f), Some(a)) => Some(f(a))
             case _ => None
@@ -1734,7 +1734,7 @@ object Main extends App {
         override def pure[A](a: A): List[A] =
           List(a)
 
-        override def ap[A, B](ff: List[A => B])(fa: List[A]): List[B] =
+        override def ap[A, B](ff: => List[A => B])(fa: => List[A]): List[B] =
           for {
             f <- ff
             a <- fa
@@ -1745,7 +1745,7 @@ object Main extends App {
         override def pure[A](a: A): State[S, A] =
           State(s => (s, a))
 
-        override def ap[A, B](ff: State[S, A => B])(fa: State[S, A]): State[S, B] =
+        override def ap[A, B](ff: => State[S, A => B])(fa: => State[S, A]): State[S, B] =
           State(s => {
             val (sp, f) = ff.run(s) // unwrap
             val (spp, a) = fa.run(sp) // unwrap
@@ -1758,7 +1758,7 @@ object Main extends App {
           (_: R) => a
 
 
-        override def ap[A, B](ff: R => A => B)(fa: R => A): R => B = { r: R =>
+        override def ap[A, B](ff: => R => A => B)(fa: => R => A): R => B = { r: R =>
           val f: A => B = ff(r) // unwrap
           val a: A = fa(r) // unwrap
           val b: B = f(a) // apply
@@ -1771,7 +1771,7 @@ object Main extends App {
 
         // this is a lot of overhead just to Applicative operations on Free.
         // maybe there's some other sort of structure that can help us here...
-        override def ap[A, B](ff: Free[G, A => B])(fa: Free[G, A]): Free[G, B] =
+        override def ap[A, B](ff: => Free[G, A => B])(fa: => Free[G, A]): Free[G, B] =
           Free.FlatMapped(ff, (f: A => B) =>
             Free.FlatMapped(fa, (a: A) =>
               Free.Point(f(a))
@@ -1832,7 +1832,7 @@ object Main extends App {
       implicit def applicativeValidated[E: Semigroup]: Applicative[Validated[E, ?]] = new Applicative[Validated[E, ?]] with FunctorValidated[E] {
         override def pure[A](a: A): Validated[E, A] = Valid(a)
 
-        override def ap[A, B](ff: Validated[E, A => B])(fa: Validated[E, A]): Validated[E, B] =
+        override def ap[A, B](ff: => Validated[E, A => B])(fa: => Validated[E, A]): Validated[E, B] =
           (ff, fa) match {
             case (Valid(f), Valid(v)) => Valid(f(v))
             case (Invalid(e), Valid(_)) => Invalid(e)
@@ -2036,7 +2036,7 @@ object Main extends App {
         override def pure[A](a: A): FreeAp[G, A] =
           Pure(a)
 
-        override def ap[A, B](ff: FreeAp[G, A => B])(fa: FreeAp[G, A]): FreeAp[G, B] =
+        override def ap[A, B](ff: => FreeAp[G, A => B])(fa: => FreeAp[G, A]): FreeAp[G, B] =
           Ap(ff, fa)
       }
 
@@ -2106,7 +2106,7 @@ object Main extends App {
    */
   trait Alternative[F[_]] { // should extend Applicative, but we don't because of implicit clashes
     def empty[A]: F[A]
-    def <|>[A](pa: F[A])(qa: F[A]): F[A]
+    def <|>[A](pa: => F[A])(qa: => F[A]): F[A]
   }
 
   object Alternative {
@@ -2120,23 +2120,25 @@ object Main extends App {
      * the function fails and then yields the collected results up to that
      * point.
      */
-    def many[F[_]: Alternative: Applicative, A](v: F[A]): F[List[A]] = {
+    def many[F[_]: Alternative: Applicative, A](v: => F[A]): F[List[A]] = {
       some(v) <|> List.empty[A].pure[F]
     }
 
     /**
      * The `some` function behaves similar except that it will fail itself if
      */
-    def some[F[_]: Alternative: Applicative, A](v: F[A]): F[List[A]] = {
+    def some[F[_]: Alternative: Applicative, A](v: => F[A]): F[List[A]] = {
       def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
         xs.prepended(x)
 
-      v.map(prepend).ap(many(v))
+      lazy val m = many(v)
+
+      v.map(prepend).ap(m)
     }
 
     object Syntax {
       implicit class AlternativeIdSyntax[F[_], A](val here: F[A]) extends AnyVal {
-        def <|>(there: F[A])(implicit instance: Alternative[F]): F[A] = {
+        def <|>(there: => F[A])(implicit instance: Alternative[F]): F[A] = {
           instance.<|>(here)(there)
         }
       }
@@ -2205,7 +2207,7 @@ object Main extends App {
         override def pure[A](a: A): Parser[A] =
           Parser { s => List((a, s)) }
 
-        override def ap[A, B](ff: Parser[A => B])(fa: Parser[A]): Parser[B] =
+        override def ap[A, B](ff: => Parser[A => B])(fa: => Parser[A]): Parser[B] =
           Parser { s =>
             for {
               (f, s1) <- ff.parse(s) // consume some of the stream
@@ -2258,10 +2260,10 @@ object Main extends App {
      * (`combine`) which applies two parser functions over the same stream and
      * concatenates the result.
      */
-    def combine[A](pa: Parser[A], qa: Parser[A]): Parser[A] =
+    def combine[A](pa: => Parser[A], qa: => Parser[A]): Parser[A] =
       Parser { s => pa.parse(s) ++ qa.parse(s) }
 
-    def option[A](pa: Parser[A], qa: Parser[A]): Parser[A] =
+    def option[A](pa: => Parser[A], qa: => Parser[A]): Parser[A] =
       Parser { s =>
         pa.parse(s) match {
           case Nil => qa.parse(s)
@@ -2281,7 +2283,7 @@ object Main extends App {
         override def empty[A]: Parser[A] =
           failure[A]
 
-        override def <|>[A](pa: Parser[A])(qa: Parser[A]): Parser[A] =
+        override def <|>[A](pa: => Parser[A])(qa: => Parser[A]): Parser[A] =
           option(pa, qa)
       }
 
@@ -2314,7 +2316,7 @@ object Main extends App {
     def oneOf(s: List[Char]): Parser[Char] =
       satisfy(s.contains)
 
-    def chainl[A](p: Parser[A])(op: Parser[A => A => A])(a: A): Parser[A] = {
+    def chainl[A](p: => Parser[A])(op: => Parser[A => A => A])(a: A): Parser[A] = {
       chainl1(p)(op) <|> a.pure[Parser]
     }
 
@@ -2323,7 +2325,7 @@ object Main extends App {
      * returns a value obtained by a recursing until failure on the left hand
      * side of the stream. This can be used to parse left-recursive grammar.
      */
-    def chainl1[A](p: Parser[A])(op: Parser[A => A => A]): Parser[A] = {
+    def chainl1[A](p: => Parser[A])(op: => Parser[A => A => A]): Parser[A] = {
       // If you think I understand how this works, you'd be sorely mistaken
       def rest(a: A): Parser[A] = (for {
         f <- op
@@ -2376,9 +2378,9 @@ object Main extends App {
     def number: Parser[Int] = for {
       s <- string("-") <|> string("")
       cs <- Alternative.some(digit)
-    } yield (s + cs).toInt
+    } yield (s + cs.mkString).toInt
 
-    def parens[A](m: Parser[A]): Parser[A] = for {
+    def parens[A](m: => Parser[A]): Parser[A] = for {
      _ <- reserved("(")
      n <- m
      _ <- reserved(")")
@@ -2454,6 +2456,6 @@ object Main extends App {
       expr.run(s).map(eval)
   }
 
-  log(Calculator("(1 + 2)")) // 6
-//  log(Calculator("(1 + 2) * (3 - (-4 + 5))")) // 6
+  log(Calculator("1+1")) // 2
+  log(Calculator("(1+2)*(3-(-4+5))")) // 6
 }
