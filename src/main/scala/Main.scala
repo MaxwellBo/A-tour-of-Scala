@@ -64,7 +64,7 @@ object Main extends App {
   val boris = Cat("Boris")
 
   val Cat(name) = boris
-  log(name) // Boris
+//  log(name) // Boris
 
   val animal: Animal = boris
 
@@ -73,7 +73,7 @@ object Main extends App {
     case Dog() => "Saw a dog"
   }
 
-  log(animalMatch) // Saw a cat with name Boris
+//  log(animalMatch) // Saw a cat with name Boris
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +84,7 @@ object Main extends App {
     case _ => "Didn't match anything"
   }
 
-  log(intMatch) // Matching with guard: caught 5
+//  log(intMatch) // Matching with guard: caught 5
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +95,7 @@ object Main extends App {
     case _ => "Didn't match anything"
   }
 
-  log(regexMatch) // The capture group was abc
+//  log(regexMatch) // The capture group was abc
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -103,7 +103,7 @@ object Main extends App {
     case ab@(a, b) => s"Matching and destructuring a tuple, but keeping the original tuple bound to ab (${ab})"
   }
 
-  log(tupleMatch) // Matching and destructuring a tuple, but keeping the original tuple bound to ab ((1,2))
+//  log(tupleMatch) // Matching and destructuring a tuple, but keeping the original tuple bound to ab ((1,2))
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function defintion syntax variants - many ways to skin a cat
@@ -160,7 +160,7 @@ object Main extends App {
 
   val addUncurried = Function.uncurried(addCurriedOuterAnon)
 
-  log(addUncurried(3, 5)) // we can call it normally again!
+//  log(addUncurried(3, 5)) // we can call it normally again!
 
   ///////////////////////////////////////////////////////////////////////////////
   // `def` enabling call by name
@@ -270,8 +270,8 @@ object Main extends App {
 
   implicit def emptyList[A]: Option[A] = None
 
-  log(implicitly[Option[Cat]]) // None
-  log(implicitly[Option[Dog]]) // None
+//  log(implicitly[Option[Cat]]) // None
+//  log(implicitly[Option[Dog]]) // None
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -283,9 +283,9 @@ object Main extends App {
   }
 
   // don't have to construct StaticCat - is global
-  log(StaticCat.sound) // static: meow
+//  log(StaticCat.sound) // static: meow
 
-  log(implicitly[Cat].sound) // static: meow
+//  log(implicitly[Cat].sound) // static: meow
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicit classes - classes that auto-wrap themselves around a receiver
@@ -304,7 +304,7 @@ object Main extends App {
 
   import IntSyntax._
 
-  log(5.increment()) // 6
+//  log(5.increment()) // 6
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -356,7 +356,7 @@ object Main extends App {
     log(a.soundExtension())
   }
 
-  makeSoundImplicitParam(Dog())
+//  makeSoundImplicitParam(Dog())
   //  makeSoundImplicitParam(Cat())
   //    makeSoundImplicitParam(Rabbit()) // this now works!
 
@@ -477,7 +477,7 @@ object Main extends App {
   }
 
   // implicit serach goes into the companion object
-  log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+//  log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
   // this now works!
 
   // obviously these do as well
@@ -1400,7 +1400,7 @@ object Main extends App {
       FileOp.writeFile("b.txt", "b")
   }
 
-  log(program)
+//  log(program)
 
   import java.io.PrintWriter
 
@@ -1559,7 +1559,7 @@ object Main extends App {
     _ <- appendFileM("bM.txt", "cM")
   } yield ()
 
-  log(programM)
+//  log(programM)
 
   import FileOpM._
 
@@ -1599,7 +1599,7 @@ object Main extends App {
   val sync = programM.foldMap(prodInterpreterM).unsafeInterpret()
   val map = programM.foldMap(testInterpreterM).run(Map.empty)
 
-  log(map)
+//  log(map)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Why is it called the Free Monad
@@ -1977,7 +1977,7 @@ object Main extends App {
     State.modify[Int](_ + 1)
   ).sequenceAL()
 
-  log(stateSequence.run(0))
+//  log(stateSequence.run(0))
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -1993,7 +1993,7 @@ object Main extends App {
     Some(7)
   ).sequenceAL()
 
-  log(noneOptionSequence)
+//  log(noneOptionSequence)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -2460,9 +2460,9 @@ object Main extends App {
       expr.run(s).map(eval)
   }
 
-  /**
+  /**gg
    * Now we can try out our little parser.
    */
-  log(Calculator("1+1")) // 2
-  log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
+//  log(Calculator("1+1")) // 2
+//  log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
 }
