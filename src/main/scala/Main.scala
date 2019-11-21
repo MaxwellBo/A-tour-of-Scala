@@ -2170,8 +2170,8 @@ object Main extends App {
           Right(res)
         case List((_, rs)) =>
           Left(s"Parser did not consume entire stream. Remaining: $rs")
-        case _ =>
-          Left("Parser error")
+        case d =>
+          Left(s"Parser error. Conflict: $d")
       }
     }
   }
@@ -2260,10 +2260,10 @@ object Main extends App {
      * (`combine`) which applies two parser functions over the same stream and
      * concatenates the result.
      */
-    def combine[A](pa: => Parser[A], qa: => Parser[A]): Parser[A] =
+    def combine[A](pa: Parser[A], qa: Parser[A]): Parser[A] =
       Parser { s => pa.parse(s) ++ qa.parse(s) }
 
-    def option[A](pa: => Parser[A], qa: => Parser[A]): Parser[A] =
+    def option[A](pa: Parser[A], qa: => Parser[A]): Parser[A] =
       Parser { s =>
         pa.parse(s) match {
           case Nil => qa.parse(s)
@@ -2460,9 +2460,9 @@ object Main extends App {
       expr.run(s).map(eval)
   }
 
-  /**gg
+  /**
    * Now we can try out our little parser.
    */
-//  log(Calculator("1+1")) // 2
-//  log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
+  log(Calculator("1+1")) // 2
+  log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
 }
