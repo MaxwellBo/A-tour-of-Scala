@@ -106,6 +106,17 @@ object Main extends App {
 //  log(tupleMatch) // Matching and destructuring a tuple, but keeping the original tuple bound to ab ((1,2))
 
   ///////////////////////////////////////////////////////////////////////////////
+  // Scopes
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val scopeReturnValue = {
+    log("This will print")
+    "This will be the return value of this scope"
+  }
+
+  log(scopeReturnValue)
+
+  ///////////////////////////////////////////////////////////////////////////////
   // Scala function defintion syntax variants - many ways to skin a cat
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -177,6 +188,50 @@ object Main extends App {
 
   // noParameterList
   // noParameterList
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Laziness
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val strictVal = {
+    log("I will always be evaluated")
+    "Strict val return value"
+  }
+
+
+  lazy val lazyVal = {
+    log("I will only be evaluated when I'm used")
+    "Lazy val return value"
+  }
+
+  def lazyDef = {
+    log("I will be evaluated when I'm used")
+    "Def return value"
+  }
+
+  def strictParameter(s: String) = {
+  }
+
+  def lazyParameter(s: => String) = {
+  }
+
+//  log("Strict parameter, strict val:")
+//  strictParameter(strictVal) // doesn't print, evaluated previously
+//
+//  log("Strict parameter, lazy val:")
+//  strictParameter(lazyVal) // prints
+//
+//  log("Strict parameter, lazy def:")
+//  strictParameter(lazyDef) // prints
+//
+//  log("Lazy parameter, strict val:")
+//  lazyParameter(strictVal) // doesn't print, previously evaluated
+//
+//  log("Lazy parameter, lazy val:")
+//  lazyParameter(lazyVal) // doesn't print
+//
+//  log("Lazy parameter, lazy def:")
+//  lazyParameter(lazyDef) // doesn't print
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicits
