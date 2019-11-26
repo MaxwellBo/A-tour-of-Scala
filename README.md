@@ -18,7 +18,7 @@ So recently I've:
 
 ### Implemented a Scala-flavoured `Base`...
 
-It's a [single file](https://github.com/MaxwellBo/A-tour-of-Scala/blob/master/src/main/scala/Main.scala) designed to be presented in a lecture format, scrolling start to finish. 
+It's a couple of largish files designed to be presented in a lecture format, scrolling start to finish. 
 
 So far, it has from-scratch, simplistic^ reimplementations of
 
