@@ -1173,13 +1173,32 @@ object Main extends App {
   object Kleisli {
 
     object Instances {
-      implicit def kleisliFunctorInstance[F[_] : Monad, R]: Functor[Kleisli[F, R, ?]] = new Functor[Kleisli[F, R, ?]] {
+
+      import Applicative.Syntax._
+      import Monad.Syntax._
+
+      trait FunctorKleisli[F[_], R] extends Functor[Kleisli[F, R, ?]] {
+        implicit def F: Monad[F]
+
         def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
           Kleisli(rfa.run.map(fa => fa.map(f)))
         }
       }
 
-      implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new Monad[Kleisli[F, R, ?]] {
+      trait ApplicativeKleisli[F[_], R] extends Applicative[Kleisli[F, R, ?]] with FunctorKleisli[F, R] {
+        implicit def F: Monad[F]
+
+        override def pure[A](a: A): Kleisli[F, R, A] =
+          Kleisli(a.pure[F].pure[R => ?])
+
+        override def ap[A, B](rff: => Kleisli[F, R, A => B])(rfa: => Kleisli[F, R, A]): Kleisli[F, R, B] = {
+          Kleisli(r => implicitly[Applicative[F]].ap(rff.run(r))(rfa.run(r)))
+        }
+      }
+
+
+      trait MonadKleisli[F[_], R] extends Monad[Kleisli[F, R, ?]] with ApplicativeKleisli[F, R] {
+        implicit def F: Monad[F]
 
         override def point[A](a: A): Kleisli[F, R, A] =
           Kleisli(a.point[F].point[R => ?])
@@ -1188,21 +1207,18 @@ object Main extends App {
         //              unwrap                unwrap
         // rewrap
           Kleisli(r => ffa.run(r).flatMap(fa => fa.run(r)))
+      }
 
-        // ### UGLY HACK BELOW HERE PLEASE IGNORE ME ###
-        override def pure[A](a: A): Kleisli[F, R, A] = point(a)
+      implicit def kleisliFunctorInstance[F[_] : Monad, R]: Functor[Kleisli[F, R, ?]] = new FunctorKleisli[F, R] {
+        override def F: Monad[F] = implicitly[Monad[F]]
+      }
 
-        override def ap[A, B](ff: => Kleisli[F, R, A => B])(fa: => Kleisli[F, R, A]): Kleisli[F, R, B] = {
-          flatMap(ff)((f: A => B) =>
-            flatMap(fa)((a: A) =>
-              point[B](f(a))
-            )
-          )
-        }
+      implicit def kleisliApplicativeInstance[F[_] : Monad, R]: Applicative[Kleisli[F, R, ?]] = new ApplicativeKleisli[F, R] with FunctorKleisli[F, R] {
+        override def F: Monad[F] = implicitly[Monad[F]]
+      }
 
-        def map[A, B](rfa: Kleisli[F, R, A])(f: A => B): Kleisli[F, R, B] = {
-          Kleisli(rfa.run.map(fa => fa.map(f)))
-        }
+      implicit def kleisliMonadInstance[F[_] : Monad, R]: Monad[Kleisli[F, R, ?]] = new MonadKleisli[F, R] {
+        override def F: Monad[F] = implicitly[Monad[F]]
       }
     }
 
@@ -2023,7 +2039,8 @@ object Main extends App {
     "LICENSE"
   ).map(IO.Safe.readFile).sequenceAL()
 
-  metadataSequence.unsafeInterpret()
+  // transforms a List[Sync[String]] into Sync[List[String]]
+//  metadataSequence.unsafeInterpret()
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -2032,6 +2049,7 @@ object Main extends App {
     State.modify[Int](_ + 1)
   ).sequenceAL()
 
+  // transforms a List[State[Int, Unit]] into State[Int, List[Unit]]
 //  log(stateSequence.run(0))
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -2047,8 +2065,6 @@ object Main extends App {
     None,
     Some(7)
   ).sequenceAL()
-
-//  log(noneOptionSequence)
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -2135,7 +2151,7 @@ object Main extends App {
       def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
         xs.prepended(x)
 
-      lazy val m = many(v)
+      lazy val m: F[List[A]] = many(v)
 
       v.map(prepend).ap(m)
     }
@@ -2469,4 +2485,133 @@ object Main extends App {
    */
   log(Calculator("1+1")) // 2
   log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // WIP SECTION
+  ///////////////////////////////////////////////////////////////////////////////
+
+  object TransformerHelpers {
+
+    import Applicative.Syntax._
+
+    def map2[F[_]: Functor, G[_]: Functor, A, B](fga: F[G[A]])(f: A => B): F[G[B]] =
+      fga.map(_.map(f))
+
+    def pure2[F[_]: Applicative, G[_]: Applicative, A](a: A): F[G[A]] = {
+      a.pure[G].pure[F]
+    }
+
+    def ap2[F[_]: Applicative, G[_]: Applicative, A, B](fgf: => F[G[A => B]])(fga: => F[G[A]]): F[G[B]] = {
+      //      val ap: (=> G[A => B]) => (=> G[A]) => G[B] =
+      ???
+    }
+
+    def point2[F[_]: Monad, G[_]: Monad, A](a: A): F[G[A]] = {
+      a.point[G].point[F]
+    }
+
+    // YOU CAN'T WRITE THIS METHOD!
+    //    def flatMap2[F[_]: Monad, G[_]: Monad, A, B](fga: => F[G[A]])(f: A => F[G[B]]): F[G[B]] = {
+    //      fga.flatMap(_.flatMap(???))
+    //    }
+  }
+
+  final case class OptionT[F[_] : Monad, A](run: F[Option[A]])
+
+  object OptionT {
+    object Instances {
+
+      trait FunctorOptionT[F[_]] extends Functor[OptionT[F, ?]] {
+        implicit def F: Monad[F]
+
+        override def map[A, B](fa: OptionT[F, A])(f: A => B): OptionT[F, B] =
+          OptionT(TransformerHelpers.map2(fa.run)(f))
+      }
+
+      trait ApplicativeOptionT[F[_]] extends Applicative[OptionT[F, ?]] with FunctorOptionT[F] {
+        implicit def F: Monad[F]
+
+        override def pure[A](a: A): OptionT[F, A] =
+          OptionT(TransformerHelpers.pure2[F, Option, A](a))
+
+        override def ap[A, B](ff: => OptionT[F, A => B])(fa: => OptionT[F, A]): OptionT[F, B] =
+        // TODO: replace with ap2
+          ???
+      }
+
+      trait MonadOptionT[F[_]] extends Monad[OptionT[F, ?]] with ApplicativeOptionT[F] {
+        implicit def F: Monad[F]
+
+        override def point[A](a: A): OptionT[F, A] =
+          OptionT(TransformerHelpers.point2[F, Option, A](a))
+
+        override def flatMap[A, B](fa: OptionT[F, A])(f: A => OptionT[F, B]): OptionT[F, B] =
+          OptionT(fa.run.flatMap {
+            case Some(a) => f(a).run
+            case None => None.asInstanceOf[Option[B]].point[F]
+          })
+      }
+
+      //      def optionTFunctorInstance[F[_]: Monad]: Functor[OptionT[F, ?]] = new FunctorOptionT[F] {
+      //        override implicit def F: Monad[F] = implicitly[Monad[F]]
+      //      }
+      //
+      //      def optionTApplicativeInstance[F[_]: Monad]: Applicative[OptionT[F, ?]] = new ApplicativeOptionT[F] {
+      //        override implicit def F: Monad[F] = implicitly[Monad[F]]
+      //      }
+      //
+      //      def optionTMonadInstance[F[_]: Monad]: Monad[OptionT[F, ?]] = new MonadOptionT[F] {
+      //        override implicit def F: Monad[F] = implicitly[Monad[F]]
+      //      }
+    }
+  }
+
+  // Seen in a previous episode
+  //  def sumAgeOfPersonAndParentsC(member: FamilyMember): Option[Int] = {
+  //    for {
+  //      mother <- member.mother
+  //      father <- member.father
+  //    } yield member.age + mother.age + father.age
+  //  }
+
+  type UUID = String
+
+  case class RemoteFamilyMember(
+    id: UUID,
+    age: Int,
+    mother: Option[UUID] = None,
+    father: Option[UUID] = None
+  )
+
+  case class FamilyMemberServiceStub(db: Map[String, RemoteFamilyMember]) {
+    def get(key: String): Sync[Option[RemoteFamilyMember]] =
+      Sync.suspend(db.get(key))
+  }
+
+  val service = FamilyMemberServiceStub(
+    Map(
+      "0" -> RemoteFamilyMember("0", 22, mother = Some("1")),
+      "1" -> RemoteFamilyMember("1", 51),
+      "2" -> RemoteFamilyMember("2", 54)
+    )
+  )
+
+  // Ain't gonna work!
+  //    def sumAgeOfPersonAndParentsT(service: FamilyMemberServiceStub, id: UUID): Sync[Option[Int]] = {
+  //      for {
+  //        member <- service.get(id)
+  //        mother <- service.get(member.mother)
+  //        father <- service.get(member.father)
+  //      } yield member.age + mother.age + father.age
+  //    }
+
+  //  def sumAgeOfPersonAndParentsT(service: FamilyMemberServiceStub, id: UUID): Sync[Option[Int]] = {
+  //    for {
+  //      member <- OptionT(service.get(id))
+  //      mother <- OptionT(member.mother.traverse(service.get))
+  //      father <- OptionT(member.father.traverse(service.get))
+  //    } yield member.age + mother.age + father.age
+  //  }
+
+  ///////////////////////////////////////////////////////////////////////////////
 }
