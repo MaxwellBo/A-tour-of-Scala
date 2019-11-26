@@ -2102,57 +2102,6 @@ object Main extends App {
 
   }
 
-  //  trait Matrix {
-  //
-  //  }
-  //
-//    type CUDAMatrix[A] = Any
-//    type OpenCLMatrix[A] = Any
-//
-//    def cudaIntrinsic(a: CUDAMatrix, b: CUDAMatrix): CUDAMatrix =
-//      ???
-//
-//    def openCLIntrinsic(a: OpenCLMatrix, b: OpenCLMatrix): OpenCLMatrix =
-//      ???
-//
-//    sealed trait MatrixOps[A]
-//
-//    object MatrixOps {
-//      case class FromList[A](xss: List[List[A]]) extends MatrixOps[Matrix]
-//
-//      // TODO: not strictly correct, need trait bound
-//      case class Product(a: Matrix, b: Matrix) extends MatrixOps[Matrix]
-//
-//      def fromList(xss: List[List[Int]]): FreeAp[MatrixOps, Matrix] =
-//        FreeAp.suspend(FromList(xss))
-//
-//      def product = (a: Matrix, b: Matrix) => FreeAp[MatrixOps, Matrix] =
-//        FreeAp.Suspend(Product(a, b))
-//    }
-//
-//    val identityMatrix = List(
-//      List(1, 0),
-//      List(0, 1),
-//    )
-//
-//
-//    val genericIdentityMatrix: FreeAp[MatrixOps, Matrix] =
-//      MatrixOps.fromList(identityMatrix)
-//
-//    import FreeAp.Instances._
-//
-//    def apProgram: FreeAp[MatrixOps, Matrix] =
-//      genericIdentityMatrix.map(MatrixOps.product.curried).ap(genericIdentityMatrix)
-//
-//
-//    def cudaInterpreter: MatrixOps ~> CUDAMatrix = new (MatrixOps ~> CUDAMatrix) {
-//      override def apply[A](fa: MatrixOps[A]): CUDAMatrix[A] =
-//        fa match {
-//          case MatrixOps.FromList(xss) =>
-//          case MatrixOps.Product(a, b) => a.C
-//        }
-//    }
-
 
   ///////////////////////////////////////////////////////////////////////////////
 
