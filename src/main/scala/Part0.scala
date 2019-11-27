@@ -69,7 +69,7 @@ object Part0 extends App {
     case Dog() => "Saw a dog"
   }
 
-  //  log(animalMatch) // Saw a cat with name Boris
+  log(animalMatch) // Saw a cat with name Boris
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -106,11 +106,11 @@ object Part0 extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   val scopeReturnValue = {
-    log("This will print")
+//    log("This will print")
     "This will be the return value of this scope"
   }
 
-  log(scopeReturnValue)
+//  log(scopeReturnValue)
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function defintion syntax variants - many ways to skin a cat
@@ -190,7 +190,7 @@ object Part0 extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   val strictVal = {
-    log("I will always be evaluated")
+//    log("I will always be evaluated")
     "Strict val return value"
   }
 
@@ -386,7 +386,7 @@ object Part0 extends App {
       }
 
       trait SoundRabbit extends Sound[Rabbit] {
-        override def sound(a: Rabbit): String = "what the fuck sound does a rabbit make lmao"
+        override def sound(a: Rabbit): String = "chitter"
       }
 
       implicit val dogInstance: Sound[Dog] = new SoundDog {}
