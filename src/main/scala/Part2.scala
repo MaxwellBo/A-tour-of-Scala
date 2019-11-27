@@ -5,7 +5,6 @@ import Part1.Applicative.Instances._
 import Part1.Applicative.Syntax._
 import Part1.Monad.Instances._
 import Part1.Monad.Syntax._
-
 import pprint.log
 
 object Part2 extends App {
@@ -35,6 +34,7 @@ object Part2 extends App {
 
     /**
      * The `some` function behaves similar except that it will fail itself if
+     * there is not at least a single match.
      */
     def some[F[_]: Alternative: Applicative, A](v: => F[A]): F[List[A]] = {
       def prepend: A => List[A] => List[A] = (x: A) => (xs: List[A]) =>
@@ -260,6 +260,9 @@ object Part2 extends App {
     def spaces: Parser[String] =
       Alternative.many(oneOf(List('\n', '\r'))).map(_.mkString)
 
+    def alpha: Parser[String] =
+      Alternative.many(satisfy(_.isLetterOrDigit)).map(_.mkString)
+
     def string(ccs: String): Parser[String] =
       ccs match {
         case "" => "".pure[Parser]
@@ -289,10 +292,10 @@ object Part2 extends App {
       cs <- Alternative.some(digit)
     } yield (s + cs.mkString).toInt
 
-    def parens[A](m: Parser[A]): Parser[A] = for {
-      _ <- reserved("(")
+    def surrounded[A](open: String)(m: Parser[A])(close: String) = for {
+      _ <- reserved(open)
       n <- m
-      _ <- reserved(")")
+      _ <- reserved(close)
     } yield n
   }
 
@@ -324,11 +327,8 @@ object Part2 extends App {
     sealed trait Expr
 
     case class Add(a: Expr, b: Expr) extends Expr
-
     case class Mul(a: Expr, b: Expr) extends Expr
-
     case class Sub(a: Expr, b: Expr) extends Expr
-
     case class Lit(n: Int) extends Expr
 
     def eval(ex: Expr): Int = ex match {
@@ -349,7 +349,7 @@ object Part2 extends App {
       chainl1(factor)(mulop)
 
     def factor: Parser[Expr] =
-      int <|> parens(expr)
+      int <|> surrounded("(")(expr)(")")
 
     def infixOp[A](x: String, f: A => A => A): Parser[A => A => A] = for {
       _ <- reserved(x)
@@ -374,4 +374,88 @@ object Part2 extends App {
    */
   log(Calculator("1+1")) // 2
   log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
+
+  /**
+   * <Json> ::= <Object>
+   *         | <Array>
+   *
+   * <Object> ::= '{' '}'
+   *            | '{' <Members> '}'
+   *
+   * <Members> ::= <Pair>
+   *             | <Pair> ',' <Members>
+   *
+   * <Pair> ::= String ':' <Value>
+   *
+   * <Array> ::= '[' ']'
+   *           | '[' <Elements> ']'
+   *
+   * <Elements> ::= <Value>
+   *              | <Value> ',' <Elements>
+   *
+   * <Value> ::= String
+   *           | Number
+   *           | <Object>
+   *           | <Array>
+   *           | true
+   *           | false
+   *           | null
+   */
+
+//  object JsonParser {
+//
+//    import Parser._
+//    import Parser.Instances._
+//    import Parser.MoreInstances._
+//    import Alternative.Syntax._
+//
+//    sealed trait Json
+//    case class ArrayJ(elements: List[Value]) extends Json
+//    case class ObjectJ(members: Map[String, Value]) extends Json
+//
+//    sealed trait Value
+//    case class StringV(value: String) extends Value
+//    case class NumberV(number: Double) extends Value
+//    case class ObjectV(obj: ObjectJ) extends Value
+//    case class ArrayV(array: ArrayJ) extends Value
+//    case object TrueV extends Value
+//    case object FalseV extends Value
+//    case object NullV extends Value
+//
+//    object JsoParsers {
+//      def obj: Parser[Json] =
+//        ???
+//
+//      def array: Parser[Json] =
+//        Parser.surrounded("[")(elements)("]").map(ArrayJ.apply)
+//
+//      def json: Parser[Json] =
+//        obj <|> array
+//    }
+//
+//    def comma: Parser[List[Value] => List[Value] => List[Value]] = for {
+//      _ <- char(',')
+//    } yield (xs: List[Value], ys: List[Value]) => xs ++ ys
+//
+//
+//    def elements: Parser[List[Value]] =
+//      chainl1(value)(comma)
+//
+//
+//
+//    object ValueParsers {
+//      def string: Parser[Value] =
+//        surrounded("\"")(Parser.alpha)("\"").map(StringV.apply)
+//
+//      def objectV: Parser[Value] =
+//        surrounded("\"")(Parser.alpha)("\"")
+//
+//    }
+//    def value: Parser[Value] =
+//      su(Parser.alpha)).map(String.apply())
+//
+//
+//    def apply(s: String): Either[String, Json] =
+//      json.run(s)
+//  }
 }
