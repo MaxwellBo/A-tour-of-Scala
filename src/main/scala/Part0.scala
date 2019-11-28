@@ -87,7 +87,7 @@ object Part0 extends App {
   val Pattern = "([a-c]+)".r
 
   val regexMatch = "abcdefg" match {
-    case Pattern(c) => s"The capture group was ${c}"
+    case Pattern(c) => s"The capture group was $c"
     case _ => "Didn't match anything"
   }
 
@@ -113,7 +113,7 @@ object Part0 extends App {
   log(scopeReturnValue) // "This will be the return value of this scope"`
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Scala function defintion syntax variants - many ways to skin a cat
+  // Scala function definition syntax variants - many ways to skin a cat
   ///////////////////////////////////////////////////////////////////////////////
 
   def add(x: Int, y: Int): Int =
@@ -173,13 +173,13 @@ object Part0 extends App {
   // `def` enabling call by name
   ///////////////////////////////////////////////////////////////////////////////
 
-  def emptyParamterList() =
+  def emptyParameterList(): Unit =
     log("I'm a function that has an empty paramater list")
 
-  // emptyParamterList()
-  // emptyParamterList()
+  // emptyParameterList()
+  // emptyParameterList()
 
-  def noParameterList =
+  def noParameterList: Unit =
     log("I'm a function that has no parameter list")
 
 //   noParameterList
@@ -216,7 +216,7 @@ object Part0 extends App {
 
   def controller(): Unit = {
     log("Doing some controller stuff to recover the `tenantId` from the request (maybe verifying a cookie)")
-    implicit val tenantContext = TenantInfo(tenantId = "3e4ff4a9-0631-49d7-b250-3318e8acfcc4")
+    implicit val tenantContext: TenantInfo = TenantInfo(tenantId = "3e4ff4a9-0631-49d7-b250-3318e8acfcc4")
     serviceLayer()
   }
 
@@ -425,26 +425,26 @@ object Part0 extends App {
     object Instances {
 
       trait EncodeString extends Encode[String] {
-        override def encode(x: String) = Json("\"" + x.toString() + "\"")
+        override def encode(x: String) = Json("\"" + x.toString + "\"")
       }
 
       trait EncodeInt extends Encode[Int] {
-        override def encode(x: Int) = Json(x.toString())
+        override def encode(x: Int) = Json(x.toString)
       }
 
       trait EncodeBoolean extends Encode[Boolean] {
-        override def encode(x: Boolean) = Json(x.toString())
+        override def encode(x: Boolean) = Json(x.toString)
       }
 
       trait EncodeMap extends Encode[Map[String, Json]] {
-        override def encode(kv: Map[String, Json]) = {
-          val inner =
+        override def encode(kv: Map[String, Json]): Json = {
+          val inner: String =
             kv
               .toList
               .map { case (k, v) => s"${encodeString.encode(k).value}: ${v.value}" }
               .mkString(", ")
 
-          val outer = s"{ ${inner} }"
+          val outer = s"{ $inner }"
           Json(outer)
         }
       }
@@ -499,7 +499,7 @@ object Part0 extends App {
   ////////////////////////////////////////////////////////////////////////////////
 
   def needsAnEncoderGenericRequirement[A: Encode](a: A) {
-     val instance = implicitly[Encode[A]] // we can still recover the instance
+//     val instance = implicitly[Encode[A]] // we can still recover the instance
     log(a.encode().value)
   }
 
