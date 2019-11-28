@@ -18,10 +18,12 @@ So recently I've:
 
 ### Implemented a Scala-flavoured `Base`...
 
-It's a couple of largish files designed to be presented in a lecture format, scrolling start to finish. 
+It's a couple of largish files designed to be presented in a lecture format, scrolling start to finish.
 
-So far, it has from-scratch, simplistic^ reimplementations of
+It covers:
 
+- Scala function calling semantics
+- Scala implicit semantics
 - The typeclass pattern
 - `Functor`, `Monad` for commonly used types (e.g. `R => ?`, `List`, `Option`)
 - `Monoid` and `Semigroup`
@@ -29,16 +31,24 @@ So far, it has from-scratch, simplistic^ reimplementations of
 - `State`
 - `Kleisli/ReaderT`
 - `Free`
-- `Applicative` 
+- `Validated`
+- `Applicative`
 - `FreeAp`
 - Parser combinators
 
+It does not yet cover:
+
+- `OptionT` and `EitherT`
+- Lenses
+- A proper reimplementation of `Circe`
+
 ### ...and given lectures about it! 
 
-- I forgot to record Part 1
-- [Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
-- [Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
-- Part 4 has yet to be recorded
+- [v2 Part 1](https://www.youtube.com/watch?v=NipuyI5qlyE)
+- [v1 Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
+- [v1 Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
+- v2 Part 4 coming soon
+- v2 Part 5 coming soon
 
 ---
  
@@ -49,15 +59,10 @@ This project is _not_ an attempt to teach functional programming from the ground
 
 ^^ If you do want to learn functional programming from the ground up, I personally recommend [Learn You a Haskell](http://learnyouahaskell.com/), or the QFPL [Functional Programming](https://github.com/data61/fp-course) + [Applied Functional Programming](https://github.com/qfpl/applied-fp-course) courses.
 
-## What's next?
-
-- Lenses
-- More monad transformers
 
 ## Contributing
 
-Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. A proper JSON implementation? A proper HTTP router? It's up to you!
-
+Feel free to contribute! If there's an abstraction that you think would be useful to document in here, open a PR. I intended on this being a useful teaching tool for _any_ team, so that individuals can pick and choose the content they want to cover. 
 
 ## Running
 
