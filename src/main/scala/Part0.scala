@@ -486,7 +486,7 @@ object Part0 extends App {
     implicit def encodePerson: Encode[Person] = new EncodePerson {}
   }
 
-  // implicit serach goes into the companion object
+  // implicit search goes into the companion object
     log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
   // this now works!
 
