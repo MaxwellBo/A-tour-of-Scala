@@ -48,11 +48,19 @@ It does not yet cover:
 
 ### ...and given lectures about it! 
 
-- [v2 Part 1](https://www.youtube.com/watch?v=XGbO7ibbrEk)
-- [v1 Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
-- [v1 Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
-- v2 Part 4 coming soon
-- v2 Part 5 coming soon
+#### Version 1
+
+- Did not record Part 1
+- [Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
+- [Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
+
+
+#### Version 2
+
+- [Part 2](https://www.youtube.com/watch?v=n2IBf5-u7ig)
+- [Part 2](https://www.youtube.com/watch?v=XGbO7ibbrEk)
+- Part 3 coming soon
+- Part 4 coming soon
 
 ---
  
