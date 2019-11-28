@@ -57,7 +57,7 @@ It does not yet cover:
 
 #### Version 2
 
-- [Part 2](https://www.youtube.com/watch?v=n2IBf5-u7ig)
+- [Part 1](https://www.youtube.com/watch?v=n2IBf5-u7ig)
 - [Part 2](https://www.youtube.com/watch?v=XGbO7ibbrEk)
 - Part 3 coming soon
 - Part 4 coming soon
