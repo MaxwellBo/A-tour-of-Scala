@@ -10,9 +10,9 @@ object Part1 extends App {
   // Datatypes that support `.map`
   ////////////////////////////////////////////////////////////////////////////////
 
-  // sealed trait Option[+A]
-  // case class Some[+A](value: A) extends Option[A]
-  // case object None extends Option[Nothing]
+//   sealed trait Option[A]
+//   case class Some[A](value: A) extends Option[A]
+//   case object None extends Option[Nothing]
 
   case class FamilyMember(
     age: Int,
@@ -52,7 +52,7 @@ object Part1 extends App {
   //  log(getParentsAges(son)) // List(55, 56)
   //  log(getParentsAges(grandma)) // List()
   //  log(getMothersAge(son)) // Some(55)
-  //  log(getMothersAge(grandma)) // None
+  //  log(getMothersAge(grandad)) // None
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -64,10 +64,10 @@ object Part1 extends App {
     member.map(familyMember => familyMember.age)
   }
 
-  //  log(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
-  //  log(getAgeFromList(grandma.parents)) // List()
-  //  log(getAgeFromOption(son.mother)) // Some(55)
-  //  log(getAgeFromOption(grandma.mother)) // None
+//    log(getAgeFromList(family)) // List(103, 79, 82, 55, 56, 22)
+//    log(getAgeFromList(grandma.parents)) // List()
+//    log(getAgeFromOption(son.mother)) // Some(55)
+//    log(getAgeFromOption(grandad.mother)) // None
 
   // How do we make something like this? 🤔
   //   def getAge[F[_]: ???](f: F[FamilyMember]): F[Int] = {
@@ -100,7 +100,8 @@ object Part1 extends App {
       // res0: List[Int] = List(2, 3, 4)
 
       trait FunctorList extends Functor[List] {
-        def map[A, B](fa: List[A])(f: A => B): List[B] = fa.map(f) // very scary reimplementation, let's not do that and use the stdlib
+        def map[A, B](fa: List[A])(f: A => B): List[B] =
+          fa.map(f) // very scary reimplementation, let's not do that and use the stdlib
       }
 
       trait FunctorOption extends Functor[Option] {
@@ -130,8 +131,14 @@ object Part1 extends App {
     f.map(_.age)
   }
 
-  // log(getAge(family)) // List(103, 79, 82, 55, 56, 22)
-  // log(getAge(son.mother)) // Some(55)
+  // equivalent to
+
+//  def getAge[F[_]](f: F[FamilyMember])(implicit instance: Functor[F]): F[Int] = {
+//    f.map(_.age)
+//  }
+
+   log(getAge(family)) // List(103, 79, 82, 55, 56, 22)
+   log(getAge(son.mother)) // Some(55)
 
   ////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////
@@ -236,7 +243,6 @@ object Part1 extends App {
           instance.flatMap(self)(f)
         }
       }
-
     }
 
     object Instances {
@@ -333,6 +339,52 @@ object Part1 extends App {
       father <- member.father
     } yield member.age + mother.age + father.age
   }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Laziness
+  ///////////////////////////////////////////////////////////////////////////////
+
+  val strictVal = {
+    log("I will always be evaluated")
+    "Strict val return value"
+  }
+
+
+  lazy val lazyVal = {
+    log("I will only be evaluated when I'm used")
+    "Lazy val return value"
+  }
+
+  def lazyDef = {
+    log("I will be evaluated when I'm used")
+    "Def return value"
+  }
+
+  def strictParameter(s: String) = {
+  }
+
+  def lazyParameter(s: => String) = {
+  }
+
+  //  log("Strict parameter, strict val:")
+  //  strictParameter(strictVal) // doesn't print, evaluated previously
+  //
+  //  log("Strict parameter, lazy val:")
+  //  strictParameter(lazyVal) // prints
+  //
+  //  log("Strict parameter, lazy def:")
+  //  strictParameter(lazyDef) // prints
+  //
+  //  log("Lazy parameter, strict val:")
+  //  lazyParameter(strictVal) // doesn't print, previously evaluated
+  //
+  //  log("Lazy parameter, lazy val:")
+  //  lazyParameter(lazyVal) // doesn't print
+  //
+  //  log("Lazy parameter, lazy def:")
+  //  lazyParameter(lazyDef) // doesn't print
+
+
 
   ///////////////////////////////////////////////////////////////////////////////
   // Fake Async
@@ -1692,13 +1744,13 @@ object Part1 extends App {
   //      } yield member.age + mother.age + father.age
   //    }
 
-  //  def sumAgeOfPersonAndParentsT(service: FamilyMemberServiceStub, id: UUID): Sync[Option[Int]] = {
-  //    for {
-  //      member <- OptionT(service.get(id))
-  //      mother <- OptionT(member.mother.traverse(service.get))
-  //      father <- OptionT(member.father.traverse(service.get))
-  //    } yield member.age + mother.age + father.age
-  //  }
+//    def sumAgeOfPersonAndParentsT(service: FamilyMemberServiceStub, id: UUID): Sync[Option[Int]] = {
+//      for {
+//        member <- OptionT(service.get(id))
+//        mother <- OptionT(member.mother.traverse(service.get))
+//        father <- OptionT(member.father.traverse(service.get))
+//      } yield member.age + mother.age + father.age
+//    }
 
   ///////////////////////////////////////////////////////////////////////////////
 }

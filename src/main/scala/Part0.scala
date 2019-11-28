@@ -35,8 +35,8 @@ object Part0 extends App {
     log(animal.sound)
   }
 
-  //   makeSound(Cat("Spock")) // meow
-  //   makeSound(Dog()) // woof
+//     makeSound(Cat("Spock")) // meow
+//     makeSound(Dog()) // woof
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -48,7 +48,7 @@ object Part0 extends App {
 
   import ThirdPartyLibrary.Rabbit
 
-  // makeSound(Rabbit()) // error: type mismatch
+//   makeSound(Rabbit()) // error: type mismatch
 
   ///////////////////////////////////////////////////////////////////////////////
   // Pattern matching = Type recognition + destructuring
@@ -106,11 +106,11 @@ object Part0 extends App {
   ///////////////////////////////////////////////////////////////////////////////
 
   val scopeReturnValue = {
-//    log("This will print")
+    log("This will print")
     "This will be the return value of this scope"
   }
 
-//  log(scopeReturnValue)
+  log(scopeReturnValue) // "This will be the return value of this scope"`
 
   ///////////////////////////////////////////////////////////////////////////////
   // Scala function defintion syntax variants - many ways to skin a cat
@@ -124,15 +124,15 @@ object Part0 extends App {
     x + y // returns the last line within the braces
   }
 
-  val addOuterAnon = (x: Int, y: Int) => {
+  val addOuterAnon: (Int, Int) => Int = (x: Int, y: Int) => {
     x + y
   }
 
-  val addInnerAnon = { (x: Int, y: Int) =>
+  val addInnerAnon: (Int, Int) => Int = { (x: Int, y: Int) =>
     x + y
   }
 
-  val addDetestMyCoworkers = {
+  val addDetestMyCoworkers: (Int, Int) => Int = {
     (_: Int) + (_: Int)
   }
 
@@ -165,7 +165,7 @@ object Part0 extends App {
   // Uncurrying - going back to the ol' fashioned way
   ///////////////////////////////////////////////////////////////////////////////
 
-  val addUncurried = Function.uncurried(addCurriedOuterAnon)
+  val addUncurried: (Int, Int) => Int = Function.uncurried(addCurriedOuterAnon)
 
   //  log(addUncurried(3, 5)) // we can call it normally again!
 
@@ -182,52 +182,9 @@ object Part0 extends App {
   def noParameterList =
     log("I'm a function that has no parameter list")
 
-  // noParameterList
-  // noParameterList
+//   noParameterList
+//   noParameterList
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Laziness
-  ///////////////////////////////////////////////////////////////////////////////
-
-  val strictVal = {
-//    log("I will always be evaluated")
-    "Strict val return value"
-  }
-
-
-  lazy val lazyVal = {
-    log("I will only be evaluated when I'm used")
-    "Lazy val return value"
-  }
-
-  def lazyDef = {
-    log("I will be evaluated when I'm used")
-    "Def return value"
-  }
-
-  def strictParameter(s: String) = {
-  }
-
-  def lazyParameter(s: => String) = {
-  }
-
-  //  log("Strict parameter, strict val:")
-  //  strictParameter(strictVal) // doesn't print, evaluated previously
-  //
-  //  log("Strict parameter, lazy val:")
-  //  strictParameter(lazyVal) // prints
-  //
-  //  log("Strict parameter, lazy def:")
-  //  strictParameter(lazyDef) // prints
-  //
-  //  log("Lazy parameter, strict val:")
-  //  lazyParameter(strictVal) // doesn't print, previously evaluated
-  //
-  //  log("Lazy parameter, lazy val:")
-  //  lazyParameter(lazyVal) // doesn't print
-  //
-  //  log("Lazy parameter, lazy def:")
-  //  lazyParameter(lazyDef) // doesn't print
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicits
@@ -240,7 +197,7 @@ object Part0 extends App {
 
   def getsImplicitString()(implicit x: String) = x
 
-  //   log(getsImplicitString()) // implicit String
+   log(getsImplicitString()) // implicit String
 
   ///////////////////////////////////////////////////////////////////////////////
   // A sensible usecase for implicits
@@ -276,8 +233,8 @@ object Part0 extends App {
     x
   }
 
-  //   log(rawImplicitly[Boolean]) // true
-  //   log(rawImplicitly[Int]) // 5
+   log(rawImplicitly[Boolean]) // true
+   log(rawImplicitly[Int]) // 5
 
   ///////////////////////////////////////////////////////////////////////////////
   // Generic parameters can be higher-kinded, and is compatible with implicit resolution
@@ -319,10 +276,10 @@ object Part0 extends App {
   // Implicit defs - we can parameterize our implicit recovery
   ///////////////////////////////////////////////////////////////////////////////
 
-  implicit def emptyList[A]: Option[A] = None
+  implicit def emptyOption[A]: Option[A] = None
 
-  //  log(implicitly[Option[Cat]]) // None
-  //  log(implicitly[Option[Dog]]) // None
+  log(implicitly[Option[Cat]]) // None
+  log(implicitly[Option[Dog]]) // None
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -334,9 +291,9 @@ object Part0 extends App {
   }
 
   // don't have to construct StaticCat - is global
-  //  log(StaticCat.sound) // static: meow
+    log(StaticCat.sound) // static: meow
 
-  //  log(implicitly[Cat].sound) // static: meow
+//    log(implicitly[Cat].sound) // static: meow
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implicit classes - classes that auto-wrap themselves around a receiver
@@ -355,7 +312,7 @@ object Part0 extends App {
 
   import IntSyntax._
 
-  //  log(5.increment()) // 6
+  log(5.increment()) // 6
 
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -368,7 +325,7 @@ object Part0 extends App {
     object Syntax {
 
       implicit class SoundIdExtensions[A](private val self: A) extends AnyVal {
-        def soundExtension()(implicit instance: Sound[A]): String = {
+        def sound_()(implicit instance: Sound[A]): String = {
           instance.sound(self)
         }
       }
@@ -404,24 +361,26 @@ object Part0 extends App {
   import Sound.Syntax._
 
   def makeSoundImplicitParam[A](a: A)(implicit instance: Sound[A]): Unit = {
-    log(a.soundExtension())
+    log(a.sound_())
   }
 
-  //  makeSoundImplicitParam(Dog())
-  //  makeSoundImplicitParam(Cat())
-  //    makeSoundImplicitParam(Rabbit()) // this now works!
+    makeSoundImplicitParam(Dog())
+    makeSoundImplicitParam(Cat("Boris"))
+    makeSoundImplicitParam(Rabbit()) // this now works!
 
   // this desugars to the method above
   def makeSoundGenericRequirement[A: Sound](a: A): Unit = {
     // val instance = implicitly[Sound[A]] // we can still recover the instance
-    log(a.soundExtension())
+    log(a.sound_())
   }
+
+  makeSoundGenericRequirement(Dog())
 
   ///////////////////////////////////////////////////////////////////////////////
 
   case class HasNoSound()
 
-  // makeSoundImplicitParam(HasNoSound())
+//   makeSoundImplicitParam(HasNoSound())
   // hkts.sc:184: could not find implicit value for parameter instance: ammonite.$file.hkts.Sound[ammonite.$file.hkts.HasNoSound]
   // val res_38 = makeSoundImplicitParam(HasNoSound())
 
@@ -438,7 +397,7 @@ object Part0 extends App {
   //
   val me = Person(name = "Max Bo", age = 22, alive = true)
 
-  // log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+//   log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -528,7 +487,7 @@ object Part0 extends App {
   }
 
   // implicit serach goes into the companion object
-  //  log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
+    log(me.encode().value) // { "name": "Max Bo", "age": 22, "alive": true }
   // this now works!
 
   // obviously these do as well
@@ -540,7 +499,7 @@ object Part0 extends App {
   ////////////////////////////////////////////////////////////////////////////////
 
   def needsAnEncoderGenericRequirement[A: Encode](a: A) {
-    // val instance = implicitly[Encode[A]] // we can still recover the instance
+     val instance = implicitly[Encode[A]] // we can still recover the instance
     log(a.encode().value)
   }
 
