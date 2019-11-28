@@ -22,11 +22,15 @@ It's a couple of largish files designed to be presented in a lecture format, scr
 
 It covers:
 
+- Pattern matching
 - Scala function calling semantics
 - Scala implicit semantics
 - The typeclass pattern
+- Trait bound desugaring
 - `Functor`, `Monad` for commonly used types (e.g. `R => ?`, `List`, `Option`)
+- `for` notation desugaring
 - `Monoid` and `Semigroup`
+- Laziness
 - A stripped down effect monad (`Sync`)
 - `State`
 - `Kleisli/ReaderT`
