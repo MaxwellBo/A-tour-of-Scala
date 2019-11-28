@@ -48,7 +48,7 @@ It does not yet cover:
 
 ### ...and given lectures about it! 
 
-- [v2 Part 1](https://www.youtube.com/watch?v=NipuyI5qlyE)
+- [v2 Part 1](https://www.youtube.com/watch?v=XGbO7ibbrEk)
 - [v1 Part 2](https://www.youtube.com/watch?v=kF5MyY_7v2I)
 - [v1 Part 3](https://www.youtube.com/watch?v=nGnr61NfHac)
 - v2 Part 4 coming soon
