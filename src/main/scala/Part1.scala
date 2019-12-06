@@ -826,7 +826,7 @@ object Part1 extends App {
   // - https://typelevel.org/cats/typeclasses/monoid.html
 
   trait Semigroup[A] {
-    def <>(here: A)(there: A): A
+    def <>(here: A)(there: A): A // combined
   }
 
   object Semigroup {
@@ -1014,21 +1014,40 @@ object Part1 extends App {
 
   sealed trait LinkedList[+A] {
     self =>
-    def map[B](f: A => B): LinkedList[B] = {
+    def mconcatMap[M: Monoid](f: A => M): M = {
       self match {
-        case Link(head, tail) => Link(f(head), tail.map(f))
-        case End => End
+        case Diamond(head, tail) => f(head) <> tail.mconcatMap(f)
+        case Mempty               => Monoid.mempty(implicitly[Monoid[M]])
       }
     }
   }
 
-  case class Link[+A](head: A, tail: LinkedList[A]) extends LinkedList[A]
+  case class Diamond[+A](head: A, tail: LinkedList[A]) extends LinkedList[A]
+  case object Mempty extends LinkedList[Nothing]
 
-  case object End extends LinkedList[Nothing]
+  ///////////////////////////////////////////////////////////////////////////////
 
-  val ll = Link(1, Link(2, Link(3, End)))
+  sealed trait Nat { self =>
+    def toInteger: Int = self match {
+      case Succ(prev) => 1 + prev.toInteger
+      case Zero       => 0
+    }
+  }
 
-  //  log(ll.map(_ + 1))
+  // Church encoding
+  case class Succ(prev: Nat) extends Nat
+  case object Zero extends Nat
+
+  object Nat { // No Monoid instance!
+    def ZERO = Zero
+    def ONE = Succ(ZERO)
+    def TWO = Succ(ONE)
+    def THREE = Succ(TWO)
+  }
+
+  val ll = Diamond(Nat.ONE, Diamond(Nat.TWO, Diamond(Nat.THREE, Mempty)))
+
+  log(ll.mconcatMap(_.toInteger)) // 6
 
   ///////////////////////////////////////////////////////////////////////////////
   // The Free Monad
@@ -1174,6 +1193,12 @@ object Part1 extends App {
 
 //  log(map)
 
+//  Free.FlatMapped(Free.suspend(IO.Safe.readFile("aM.txt")),
+//    (xs: String) =>
+//      Free.suspend(IO.Safe.writeFile("bM.txt", xs))
+//  )
+//  .foldMap(testInterpreterM).run(Map.empty)
+
   ///////////////////////////////////////////////////////////////////////////////
   // Why is it called the Free Monad
   ///////////////////////////////////////////////////////////////////////////////
@@ -1203,6 +1228,10 @@ object Part1 extends App {
   // see sumAgeOfPersonAndParentsC
 
   ///////////////////////////////////////////////////////////////////////////////
+
+//  def map[F[_]: Functor,        A, B]    (fa: F[A])(f:   A =>   B):  F[B]
+//  def flipap[F[_]: Applicative, A, B]    (fa: F[A])(f: F[A =>   B]): F[B]
+//  def flatMap[F[_]: Monad,      A, B]    (fa: F[A])(f:   A => F[B]): F[B]
 
   object MoreSyncInstances {
 
@@ -1367,7 +1396,7 @@ object Part1 extends App {
 
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Validated[+E, +A]
+  sealed trait Validated[E, A]
 
   case class Valid[E, A](value: A) extends Validated[E, A]
 
@@ -1387,17 +1416,17 @@ object Part1 extends App {
         }
       }
 
-      //      trait MonadValidated[E] extends Monad[Validated[E, ?]]  {
-      //        override def point[A](a: A): Validated[E, A] =
-      //          Valid(a)
-      //
-      //        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
-      //          fa match {
-      //            case Valid(v) => f(v)
-      //            case Invalid(e) => Invalid(e) // [sic]
-      //          }
-      //        }
-      //      }
+//      trait MonadValidated[E] extends Monad[Validated[E, ?]]  {
+//        override def point[A](a: A): Validated[E, A] =
+//          Valid(a)
+//
+//        override def flatMap[A, B](fa: Validated[E, A])(f: A => Validated[E, B]): Validated[E, B] = {
+//          fa match {
+//            case Valid(v) => f(v)
+//            case Invalid(e) => Invalid(e) // [sic]
+//          }
+//        }
+//      }
 
       implicit def functorValidated[E]: Functor[Validated[E, ?]] = new FunctorValidated[E] {}
 
@@ -1432,9 +1461,9 @@ object Part1 extends App {
 
     def validatePassword(password: String): Validated[List[Error], String] = {
       if (password.length < 8) {
-        Valid(password)
-      } else {
         Invalid(List(s"Password was shorter than 8 characters"))
+      } else {
+        Valid(password)
       }
     }
 
@@ -1456,16 +1485,18 @@ object Part1 extends App {
         Applicative.liftA2(mkUserCreds.curried)(validateEmail(username))(validatePassword(password))
       }
     }
+  }
 
-    def signup[E](credentials: Valid[E, UserCredentials]): Unit = {
-      log(credentials)
-    }
+  import CredentialValidator._
 
-    CredentialValidator.UserCredentials("Max Bo", "hunter2") match {
-      case v@Valid(_) => signup(v)
-      //    case i@Invalid(_) => signup(i)
-      case Invalid(error) => log(error)
-    }
+  def signup[E](credentials: Valid[E, UserCredentials]): Unit = {
+    log(credentials)
+  }
+
+  CredentialValidator.UserCredentials("Max Bo", "hunter2") match {
+    case v@Valid(_) => signup(v)
+//    case i@Invalid(_) => signup(i)
+    case Invalid(error) => log(error) // Part1.scala:1474 error: List("Username must be an email", "Password was shorter than 8 characters")
   }
 
   ///////////////////////////////////////////////////////////////////////////////

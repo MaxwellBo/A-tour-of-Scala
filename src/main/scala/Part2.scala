@@ -5,6 +5,7 @@ import Part1.Applicative.Instances._
 import Part1.Applicative.Syntax._
 import Part1.Monad.Instances._
 import Part1.Monad.Syntax._
+import Part2.Equivalence.equivalence
 import pprint.log
 
 object Part2 extends App {
@@ -280,7 +281,6 @@ object Part2 extends App {
     def reserved(s: String): Parser[String] =
       token(string(s))
 
-
     def digit: Parser[Char] =
       satisfy(_.isDigit)
 
@@ -292,7 +292,7 @@ object Part2 extends App {
       cs <- Alternative.some(digit)
     } yield (s + cs.mkString).toInt
 
-    def surrounded[A](open: String)(m: Parser[A])(close: String) = for {
+    def surrounded[A](open: String)(m: Parser[A])(close: String): Parser[A] = for {
       _ <- reserved(open)
       n <- m
       _ <- reserved(close)
@@ -304,13 +304,13 @@ object Part2 extends App {
    * library to write down a simple parser for a calculator grammar. In the
    * formal Backus–Naur Form our grammar would be written as:
    *
-   * number = [ "-" ] digit { digit }.
-   * digit  = "0" | "1" | ... | "8" | "9".
-   * expr   = term { addop term }.
-   * term   = factor { mulop factor }.
-   * factor = "(" expr ")" | number.
-   * addop  = "+" | "-".
-   * mulop  = "*".
+   * number ::= [ "-" ] digit { digit }.
+   * digit  ::= "0" | "1" | ... | "8" | "9".
+   * expr   ::= term { addop term }.
+   * term   ::= factor { mulop factor }.
+   * factor ::= "(" expr ")" | number.
+   * addop  ::= "+" | "-".
+   * mulop  ::= "*".
    */
 
   /**
@@ -374,6 +374,117 @@ object Part2 extends App {
    */
   log(Calculator("1+1")) // 2
   log(Calculator("(2*(1+2)*(3-(-4+5)))")) // 12
+
+  // Can we do everything Regex can?
+
+  object Equivalence {
+    import scala.util.matching._
+    import Parser._
+    import Parser.Instances._
+    import Parser.MoreInstances._
+    import Alternative.Syntax._
+
+    def equivalence(pattern: String, parser: Parser[String])(candidates: String*) = {
+      "\n" + candidates.toList.map { stream =>
+        val regex = pattern.r
+        val regexResult: Either[String, String] = stream match {
+          case regex(_*) => Right(stream)
+          case a => Left("Did not match")
+        }
+
+        val parserResult: Either[String, String] = parser.run(stream)
+
+        val prefix = ("\'" + stream + "\'").padTo(6, " ").mkString
+
+        (regexResult, parserResult) match {
+          case (Right(a), Right(b)) => s"$prefix: ✅ \'$a\' ✅ \'$b\'"
+          case (Left(_), Right(b)) => s"$prefix: ❌ NO ✅ \'$b\'"
+          case (Right(a), Left(_)) => s"$prefix:  ✅ \'$a\' ❌ NO"
+          case _ => s"$prefix: ❌ NO ❌ NO"
+        }
+      }.mkString("\n")
+    }
+
+    def some() =
+      log(equivalence(
+        pattern = "^a+$",
+        parser = Alternative.some(Parser.char('a')).map(_.mkString)
+      )
+      (
+        "",
+        "a",
+        "aa",
+        "aab",
+        "ba",
+      ))
+
+    def many() =
+      log(equivalence(
+        pattern = "^a*$",
+        parser = Alternative.many(Parser.char('a')).map(_.mkString)
+      )(
+        "",
+        "a",
+        "aa",
+        "aab",
+        "ba",
+      ))
+
+    def alternative() =
+      log(equivalence(
+        pattern = "^(a|b)$",
+        parser = (Parser.char('a') <|> Parser.char('b')).map(_.toString)
+      )(
+        "",
+        "a",
+        "b",
+        "c",
+      ))
+
+    def anyOf() =
+      log(equivalence(
+        pattern = "^[abc]$",
+        parser = Parser.oneOf(List('a', 'b', 'c')).map(_.toString)
+      )(
+        "",
+        "a",
+        "b",
+        "c",
+        "d"
+      ))
+
+    // https://stackoverflow.com/questions/1732348/regex-match-open-tags-except-xhtml-self-contained-tags
+    // https://en.wikipedia.org/wiki/Chomsky_hierarchy
+
+    // S ::= aSb | ab
+
+    def S: Parser[String] =
+      Parser.string("ab") <|> (for {
+        a <- Parser.char('a')
+        s <- S
+        b <- Parser.char('b')
+    } yield a + s + b)
+
+    def type2() =
+      log(equivalence(
+        pattern = "",
+        parser = S
+      )(
+        "aabb",
+        "aaabbb",
+        "aaaabbbb",
+      ))
+  }
+
+  Equivalence.some()
+  Equivalence.many()
+  Equivalence.alternative()
+  Equivalence.anyOf()
+  Equivalence.type2()
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+
 
   /**
    * <Json> ::= <Object>
