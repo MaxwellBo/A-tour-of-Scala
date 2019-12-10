@@ -59,7 +59,7 @@ It does not yet cover:
 
 - [Part 1](https://www.youtube.com/watch?v=XGbO7ibbrEk)
 - [Part 2](https://www.youtube.com/watch?v=n2IBf5-u7ig)
-- Part 3 coming soon
+- [Part 3](https://www.youtube.com/watch?v=cUZ6mg5Y_xE)
 - Part 4 coming soon
 
 ---
