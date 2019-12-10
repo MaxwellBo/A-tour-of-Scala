@@ -1054,11 +1054,11 @@ object Part1 extends App {
   ///////////////////////////////////////////////////////////////////////////////
   // https://stackoverflow.com/a/13388966/5835579
 
-  type ~>[F[_], G[_]] = NaturalTransformation[F, G]
+  type ~>[X[_], Y[_]] = NaturalTransformation[X, Y]
 
-  trait NaturalTransformation[F[_], G[_]] {
+  trait NaturalTransformation[X[_], Y[_]] {
     self =>
-    def apply[A](fa: F[A]): G[A]
+    def apply[A](xa: X[A]): Y[A]
   }
 
   sealed trait Free[G[_], A] {
