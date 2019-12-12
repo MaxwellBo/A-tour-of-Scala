@@ -64,7 +64,7 @@ It does not yet cover:
 
 #### Special Editions
 
-- [Megaman Cross Pollination (Parser Combinators)](https://www.youtube.com/watch?v=Iv9rH6xEFfQ)
+- [Megaman Cross Pollination (parser combinators)](https://www.youtube.com/watch?v=Iv9rH6xEFfQ)
 
 ---
  
