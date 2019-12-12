@@ -62,6 +62,10 @@ It does not yet cover:
 - [Part 3](https://www.youtube.com/watch?v=cUZ6mg5Y_xE)
 - Part 4 coming soon
 
+#### Special Editions
+
+- [Megaman Cross Pollination (Parser Combinators)](https://www.youtube.com/watch?v=Iv9rH6xEFfQ)
+
 ---
  
 This project is _not_ an attempt to teach functional programming from the ground up^^ - rather an attempt to teach developers who might need to briefly contribute to Scala production codebases _just_ enough to get by. It's also designed to be a useful as a 1-on-1 teaching tool, allowing the quick creation of example code and demos, where all abstractions can be copy-pasted into the snippet or Gist after a couple `Go to definition`s.
