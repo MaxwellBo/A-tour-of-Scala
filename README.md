@@ -2,7 +2,7 @@
 
 > Scala is what happens when somebody takes OCaml, mixes in some Haskell, adds some Java coloured sprinkles in the mix, and and randomly shoves the whole thing together into a garbage disposal and lights it before running away laughing maniacally.
 
-> Which is to say, Scala is a bipolar, flawed, genius with a massive ego and huge ambitions. It is both utterly brilliant and utterly terrible at the same time, with the "Utterly Brilliant" shining more brightly.
+> Which is to say, Scala is a bipolar, flawed, genius with a massive ego and huge ambitions. It is both utterly brilliant and utterly terrible at the same time, with the "Utterly Brilliant" shining more brightly. [...]
 
 > More precisely, Scala is a functional programming language more closely related to SML or Ocaml, with some improvements to support something resembling Haskell style typeclasses and monadic programming that were, perhaps, completely by accident.
 
