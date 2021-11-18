@@ -60,11 +60,11 @@ It does not yet cover:
 - [Part 1](https://www.youtube.com/watch?v=XGbO7ibbrEk)
 - [Part 2](https://www.youtube.com/watch?v=n2IBf5-u7ig)
 - [Part 3](https://www.youtube.com/watch?v=cUZ6mg5Y_xE)
-- Part 4 coming soon
 
-#### Special Editions
+#### Parser combinators 
 
-- [Megaman Cross Pollination (parser combinators)](https://www.youtube.com/watch?v=Iv9rH6xEFfQ)
+- [Megaman Cross Pollination](https://www.youtube.com/watch?v=Iv9rH6xEFfQ)
+- [UQCS](https://www.youtube.com/watch?v=bvjBgAGq3E8)
 
 ---
  
